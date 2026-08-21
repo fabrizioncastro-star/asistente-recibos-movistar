@@ -1,0 +1,225 @@
+// Orquestador conversacional. Solo se detectan por palabras clave, de
+// forma deterministica, las cosas que son ACCIONES de sistema (disparan
+// consultas reales a la BD, no solo texto libre): cambiar de linea,
+// derivar a asesor/pago, ver recibos anteriores, ver detalle y registrar
+// la consulta -- las 5 "siguientes acciones" que pide la ficha del
+// Desafio 1. Todo lo demas -- la conversacion real -- se lo pasamos a
+// Claude (llm.responderConversacion) junto con los hechos del recibo, el
+// glosario, el historial y, cuando corresponde, un beneficio destacado o
+// el detalle itemizado, para que entienda de verdad lo que se le pregunta.
+const engine = require("./engine");
+const nlg = require("./nlg");
+const llm = require("./llm");
+
+const PALABRAS_ASESOR = ["asesor", "humano", "persona", "agente", "hablar con alguien", "representante"];
+const PALABRAS_PAGAR = ["pagar", "como pago", "donde pago", "quiero pagar"];
+const PALABRAS_CAMBIAR_LINEA = ["otra linea", "otro servicio", "mis lineas", "mis servicios", "cambiar de linea", "ver mis lineas"];
+const PALABRAS_RECIBOS_ANTERIORES = [
+  "recibos anteriores", "recibo anterior", "otros recibos", "historial de recibos",
+  "recibos pasados", "meses anteriores", "ver mis recibos", "recibo de otro mes", "recibos previos",
+];
+const PALABRAS_DETALLE = [
+  "ver el detalle", "el detalle de mi recibo", "ver detalle", "desglose", "detalle completo",
+  "que me estan cobrando", "que conceptos", "detalle de mi recibo", "ver mis cargos",
+];
+const PALABRAS_REGISTRAR_CONSULTA = [
+  "registrar mi consulta", "dejar constancia", "quiero un ticket", "registrar esta consulta",
+  "registrar mi reclamo", "quiero que quede registrado", "registrar consulta",
+];
+// Para el registro de satisfaccion / "tasa de silencio post-explicacion" (pedido de la ficha):
+const PALABRAS_CIERRE = ["gracias", "listo", "perfecto", "entendido", "ok gracias", "eso es todo", "nada mas", "de acuerdo", "muy bien"];
+// Para el "Efecto Efervescente" (mas estricto que PALABRAS_CIERRE): solo
+// cuenta como cierre real si el bot ACABA de preguntar "algo mas?" y el
+// cliente responde que no -- no cualquier "gracias" a mitad de conversacion.
+const PATRONES_BOT_PREGUNTO_ALGO_MAS = ["algo mas", "algo especifico", "necesitas algo", "puedo ayudarte", "en que mas", "algo en lo que"];
+const PALABRAS_NEGACION_CIERRE = ["no gracias", "no, gracias", "no nada mas", "no nada más", "nada mas", "eso es todo", "no por ahora", "no necesito", "no eso seria todo", "no era todo"];
+// Marca de texto (busqueda literal, no normalizada) que deja el bot cuando
+// lista los recibos anteriores -- asi sabemos si el siguiente mensaje es
+// una seleccion por numero/posicion (que solo tiene sentido justo despues).
+const MARCA_LISTADO_RECIBOS = "cual quieres que te explique";
+
+const MESES_LARGO = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+
+function formatearMes(fechaIso) {
+  if (!fechaIso) return "fecha no disponible";
+  const [y, m] = fechaIso.split("-");
+  return `${MESES_LARGO[Number(m) - 1]} ${y}`;
+}
+
+function botPreguntoSiAlgoMas(historial) {
+  const ultimoBot = [...historial].reverse().find((h) => h.role === "bot");
+  if (!ultimoBot) return false;
+  return contieneAlguna(normalizar(ultimoBot.content), PATRONES_BOT_PREGUNTO_ALGO_MAS);
+}
+
+function botMostroListaRecibos(historial) {
+  const ultimoBot = [...historial].reverse().find((h) => h.role === "bot");
+  if (!ultimoBot) return false;
+  return normalizar(ultimoBot.content).includes(MARCA_LISTADO_RECIBOS);
+}
+
+function esNegacionCierre(texto) {
+  const t = texto.trim();
+  if (/^no\.?$/i.test(t)) return true; // el usuario escribio solo "no"
+  return contieneAlguna(t, PALABRAS_NEGACION_CIERRE);
+}
+
+function normalizar(texto) {
+  return texto
+    .toLowerCase()
+    .trim()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "");
+}
+
+function contieneAlguna(texto, palabras) {
+  return palabras.some((p) => texto.includes(p));
+}
+
+// Antes de mostrar el beneficio ("Efecto Efervescente") verificamos que el
+// ciclo completo "bot pregunta algo mas -> cliente dice que no" no se haya
+// completado YA antes en esta conversacion -- asi evitamos mostrarlo de
+// nuevo si el cliente vuelve a decir que no mas adelante. OJO: no basta con
+// buscar un "gracias" suelto en el historial, porque el propio "gracias"
+// que dispara la pregunta "algo mas?" tambien contendria esa palabra --
+// hay que verificar el PAR completo (pregunta + negacion), no solo un lado.
+function yaHuboCierreEfectivo(historial) {
+  for (let i = 0; i < historial.length - 1; i++) {
+    const turno = historial[i];
+    if (turno.role !== "bot" || !contieneAlguna(normalizar(turno.content), PATRONES_BOT_PREGUNTO_ALGO_MAS)) continue;
+    const siguiente = historial[i + 1];
+    if (siguiente && siguiente.role === "user" && esNegacionCierre(siguiente.content)) return true;
+  }
+  return false;
+}
+
+async function responder(cuenta, mensaje, recibo = null, linea = null, historial = [], canal = "web") {
+  const texto = normalizar(mensaje);
+
+  if (!cuenta) {
+    return { respuesta: "Primero necesito identificar tu cuenta para poder revisar tu recibo.", acciones: [] };
+  }
+
+  if (contieneAlguna(texto, PALABRAS_CAMBIAR_LINEA)) {
+    const lineas = await engine.buscarCuenta(cuenta);
+    if (lineas && lineas.length > 1) {
+      const listado = lineas.map((l) => `- **${l.etiqueta}** (línea •••${String(l.anexo).slice(-4)})`).join("\n");
+      return { respuesta: `Tu cuenta tiene estos servicios:\n\n${listado}\n\n¿Sobre cuál quieres consultar?`, acciones: [] };
+    }
+    return { respuesta: "Tu cuenta tiene un solo servicio, así que ya estamos viendo el correcto. 🙂", acciones: [] };
+  }
+
+  if (contieneAlguna(texto, PALABRAS_ASESOR)) {
+    const diag = await engine.diagnosticar(cuenta, recibo, linea);
+    const contexto = nlg.resumenParaAsesor(diag);
+    engine.registrarSatisfaccion(cuenta, canal, "insatisfecho", "solicito hablar con un asesor").catch(() => {});
+    return {
+      respuesta:
+        "Listo, te conecto con un asesor y ya le compartí el contexto de tu consulta " +
+        "(tu recibo, el anterior, y la causa detectada) para que no tengas que repetir todo.",
+      acciones: ["derivar_asesor"],
+      contexto_asesor: contexto,
+      satisfaccion: "insatisfecho",
+    };
+  }
+
+  if (contieneAlguna(texto, PALABRAS_PAGAR)) {
+    const diag = await engine.diagnosticar(cuenta, recibo, linea);
+    if (diag.encontrado) {
+      return {
+        respuesta: `Tu monto a pagar de este ciclo es **${"S/ " + diag.total_actual.toFixed(2)}**. Puedes pagarlo desde esta misma App con Yape, Plin o tarjeta.`,
+        acciones: ["ir_a_pagar"],
+      };
+    }
+    return { respuesta: diag.error || "No encontré tu recibo para procesar el pago.", acciones: [] };
+  }
+
+  // "Registrar la consulta": accion explicita de la ficha, junto a
+  // pagar/revisar detalle/derivar a asesor. Deja un folio real en BD.
+  if (contieneAlguna(texto, PALABRAS_REGISTRAR_CONSULTA)) {
+    const diag = await engine.diagnosticar(cuenta, recibo, linea);
+    const resumen = nlg.resumenParaAsesor(diag);
+    const folio = await engine.registrarConsulta(cuenta, canal, resumen);
+    return {
+      respuesta: `Listo, dejé registrada tu consulta con el folio **#${folio}**. Si más adelante hablas con un asesor, ya va a tener este contexto disponible sin que tengas que repetirlo.`,
+      acciones: [],
+    };
+  }
+
+  // "Revisar el detalle": a diferencia de las causas (solo lo que VARIO),
+  // esto trae CADA concepto cobrado en el recibo actual.
+  if (contieneAlguna(texto, PALABRAS_DETALLE)) {
+    const diag = await engine.diagnosticar(cuenta, recibo, linea);
+    if (!diag.encontrado) {
+      return { respuesta: diag.error || "No encontré tu recibo para mostrarte el detalle.", acciones: [] };
+    }
+    const detalle = await engine.detalleRecibo(cuenta, diag.recibo_actual, linea);
+    const textoResp = await llm.responderConversacion({ diag, historial, mensajeUsuario: mensaje, detalle });
+    return { respuesta: textoResp, acciones: ["pagar", "hablar_con_asesor"] };
+  }
+
+  // "Analizar el recibo actual y los recibos previos" (BrainyBill expone
+  // factura actual + 5 previas, segun la ficha). Primero, si el cliente
+  // pide ver la lista en general:
+  if (contieneAlguna(texto, PALABRAS_RECIBOS_ANTERIORES)) {
+    const historialRec = await engine.historialRecibos(cuenta, linea);
+    const anteriores = historialRec.slice(1);
+    if (!anteriores.length) {
+      return { respuesta: "Este es tu único recibo registrado hasta ahora, todavía no hay anteriores con qué compararlo.", acciones: [] };
+    }
+    const listado = anteriores.map((r, i) => `${i + 1}. ${formatearMes(r.fecha)} — S/ ${r.total.toFixed(2)}`).join("\n");
+    return {
+      respuesta: `Estos son tus recibos anteriores:\n\n${listado}\n\n¿${MARCA_LISTADO_RECIBOS}? Dime el mes o el número de la lista.`,
+      acciones: [],
+    };
+  }
+
+  // Si el cliente nombra un mes puntual ("el de julio"), o si el bot acaba
+  // de mostrar la lista de arriba y el cliente responde con un número u
+  // ordinal, resolvemos a que recibo especifico se refiere y lo explicamos.
+  const historialRec = await engine.historialRecibos(cuenta, linea);
+  let reciboReferido = null;
+  if (historialRec.length > 1) {
+    reciboReferido = engine.resolverReferenciaPorMes(historialRec, mensaje);
+    if (!reciboReferido && botMostroListaRecibos(historial)) {
+      reciboReferido = engine.resolverReferenciaPorPosicion(historialRec.slice(1), mensaje);
+    }
+  }
+  if (reciboReferido) {
+    const diagHist = await engine.diagnosticar(cuenta, reciboReferido, linea);
+    const textoResp = await llm.responderConversacion({ diag: diagHist, historial, mensajeUsuario: mensaje });
+    return { respuesta: textoResp, acciones: diagHist.encontrado ? ["hablar_con_asesor"] : [] };
+  }
+
+  let satisfaccion;
+  if (contieneAlguna(texto, PALABRAS_CIERRE)) {
+    satisfaccion = "conforme";
+    engine.registrarSatisfaccion(cuenta, canal, "conforme", mensaje).catch(() => {});
+  }
+
+  // El beneficio solo se muestra cuando el bot pregunto "algo mas?" y el
+  // cliente dice que no -- ese es el cierre real de la conversacion.
+  const mostrarBeneficio =
+    esNegacionCierre(texto) && botPreguntoSiAlgoMas(historial) && !yaHuboCierreEfectivo(historial);
+
+  // Conversacion real: Claude ve los hechos del recibo + glosario + historial
+  // + (solo si corresponde) un beneficio ya incluido en el plan, y responde
+  // a lo que efectivamente se le pregunto -- no siempre lo mismo.
+  const [diag, beneficioRaw] = await Promise.all([
+    engine.diagnosticar(cuenta, recibo, linea),
+    mostrarBeneficio ? engine.buscarBeneficioDestacado(cuenta, linea) : Promise.resolve(null),
+  ]);
+  const textoResp = await llm.responderConversacion({ diag, historial, mensajeUsuario: mensaje, beneficio: beneficioRaw });
+
+  // Las "siguientes acciones" que pide la ficha (pagar, revisar detalle,
+  // registrar la consulta, derivar a asesor) se ofrecen siempre que hay un
+  // recibo identificado -- no solo cuando hubo variacion.
+  const acciones = diag.encontrado
+    ? ["ver_recibos_anteriores", "registrar_consulta", "pagar", "hablar_con_asesor"]
+    : [];
+  if (diag.encontrado && diag.diferencia > 0.5) acciones.unshift("ver_detalle");
+
+  return { respuesta: textoResp, acciones, satisfaccion, beneficioMostrado: mostrarBeneficio && !!beneficioRaw };
+}
+
+module.exports = { responder };

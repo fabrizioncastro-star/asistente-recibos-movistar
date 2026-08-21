@@ -1,0 +1,520 @@
+// Motor de comparacion y diagnostico de recibos (puerto a Node/SQL del
+// engine.py original). Esta capa NO redacta texto: solo calcula numeros y
+// clasifica causas contra la base de datos real. nlg.js es la unica que
+// puede convertir esto en texto para el cliente.
+const pool = require("./db");
+
+const UMBRAL_IGNORAR = 0.5;
+
+const LOB_LABELS = {
+  WRLS: "Línea Móvil",
+  BB: "Internet Hogar",
+  ShEq: "Equipo/Router de Internet",
+  TV: "TV",
+  VOIC: "Línea Fija (Voz)",
+};
+
+// Catalogo de tarifas oficiales (charge_code -> precio de catalogo). Se
+// cachea en memoria porque es una tabla chica (~7k filas) y de solo lectura.
+let catalogoCache = null;
+async function cargarCatalogo() {
+  if (catalogoCache) return catalogoCache;
+  const [rows] = await pool.query("SELECT charge_code, rate_final, tipo_renta FROM catalogo_ofertas");
+  catalogoCache = {};
+  for (const r of rows) {
+    if (r.rate_final !== null) catalogoCache[r.charge_code] = { tarifa: Number(r.rate_final), tipo_renta: r.tipo_renta };
+  }
+  return catalogoCache;
+}
+
+async function buscarCuenta(cuenta) {
+  const [rows] = await pool.query(
+    "SELECT num_anexo, lob_type, negocio FROM planta_clientes WHERE financial_account = ?",
+    [String(cuenta).trim()]
+  );
+  if (!rows.length) return null;
+  return rows.map((r) => ({
+    anexo: r.num_anexo,
+    tipo: r.lob_type,
+    etiqueta: LOB_LABELS[r.lob_type] || r.lob_type,
+    negocio: r.negocio,
+  }));
+}
+
+async function recibosDeCuenta(cuenta, linea) {
+  const params = [cuenta];
+  let sql = `SELECT legal_invoice_number, ciclo, SUM(charge_total_amount) AS total,
+                    MIN(customer_key) AS customer_key, MIN(subscriber_key) AS subscriber_key
+             FROM facturacion WHERE financial_account_key = ?`;
+  if (linea) {
+    sql += " AND subscriber_key = ?";
+    params.push(linea);
+  }
+  sql += " GROUP BY legal_invoice_number, ciclo ORDER BY ciclo DESC";
+  const [rows] = await pool.query(sql, params);
+  return rows.map((r) => ({
+    recibo: r.legal_invoice_number,
+    ciclo: r.ciclo,
+    total: Number(r.total),
+    customerKey: r.customer_key,
+    subscriberKey: r.subscriber_key,
+  }));
+}
+
+async function lineasDeRecibo(cuenta, recibo, linea) {
+  const params = [cuenta, recibo];
+  let sql = "SELECT * FROM facturacion WHERE financial_account_key = ? AND legal_invoice_number = ?";
+  if (linea) {
+    sql += " AND subscriber_key = ?";
+    params.push(linea);
+  }
+  const [rows] = await pool.query(sql, params);
+  return rows;
+}
+
+async function detectarProrrateo(reciboActual) {
+  const [rows] = await pool.query("SELECT * FROM brainy_prorrateo WHERE numero_recibo = ? LIMIT 1", [reciboActual]);
+  if (!rows.length) return null;
+  const r = rows[0];
+  return {
+    tipo: "prorrateo",
+    monto: Number(r.suma_prorrateo),
+    detalle: {
+      desde: r.fecha_inicio_minima ? r.fecha_inicio_minima.slice(0, 10) : null,
+      hasta: r.fecha_fin_maxima ? r.fecha_fin_maxima.slice(0, 10) : null,
+      cargos_involucrados: r.q_cargos,
+    },
+  };
+}
+
+async function detectarReconexion(reciboActual) {
+  const [rows] = await pool.query("SELECT * FROM brainy_reconexiones WHERE numero_recibo = ? LIMIT 1", [reciboActual]);
+  if (!rows.length) return null;
+  const r = rows[0];
+  return {
+    tipo: "reconexion",
+    monto: Number(r.monto),
+    detalle: {
+      descripcion: r.descripcion,
+      fecha_corte: r.fecha_corte ? r.fecha_corte.slice(0, 10) : null,
+      fecha_reconexion: r.fecha_reconexion ? r.fecha_reconexion.slice(0, 10) : null,
+    },
+  };
+}
+
+async function detectarFinDescuento(cuenta, periodoInicio, periodoFin) {
+  if (!periodoInicio || !periodoFin) return [];
+  const [rows] = await pool.query(
+    `SELECT * FROM brainy_descuentos_cuotas
+     WHERE cuentafinanciera = ? AND flag_descuento_completo = 1
+       AND fecha_fin BETWEEN ? AND ?`,
+    [cuenta, periodoInicio, periodoFin]
+  );
+  const vistos = new Set();
+  const causas = [];
+  for (const r of rows) {
+    const clave = `${r.descripcion}|${Number(r.monto_descuento).toFixed(2)}`;
+    if (vistos.has(clave)) continue;
+    vistos.add(clave);
+    causas.push({
+      tipo: "fin_descuento",
+      monto: Number(r.monto_descuento),
+      detalle: {
+        concepto: r.descripcion,
+        duro_meses: r.promotion_duration,
+        fecha_fin: r.fecha_fin ? r.fecha_fin.slice(0, 10) : null,
+      },
+    });
+  }
+  return causas;
+}
+
+async function detectarFinanciamiento(lineasRelevantes) {
+  const catalogo = await cargarCatalogo();
+  return lineasRelevantes
+    .filter((r) => (r.charge_code_classification || "").toLowerCase().includes("financiamiento"))
+    .map((r) => ({
+      tipo: "financiamiento",
+      monto: Number(r.charge_total_amount),
+      detalle: {
+        concepto: r.charge_code_desc,
+        charge_code_id: r.charge_code_id,
+        tarifa_oficial: catalogo[r.charge_code_id]?.tarifa ?? null,
+      },
+    }));
+}
+
+async function detectarCambioPlan(customerKey, periodoInicio, periodoFin, subscriberKey) {
+  if (!periodoInicio || !periodoFin) return [];
+  const params = [customerKey, periodoInicio, periodoFin];
+  let sql = "SELECT * FROM ordenes WHERE customer_key = ? AND completion_date BETWEEN ? AND ?";
+  if (subscriberKey) {
+    sql += " AND subscriber_key = ?";
+    params.push(subscriberKey);
+  }
+  const [rows] = await pool.query(sql, params);
+  return rows.map((r) => ({
+    tipo: "cambio_plan",
+    monto: 0,
+    detalle: {
+      accion: r.item_type_desc,
+      motivo: r.reason_desc,
+      fecha: r.completion_date ? r.completion_date.slice(0, 10) : null,
+    },
+  }));
+}
+
+async function detectarNotasCredito(cuenta, subscriberKey, periodoInicio, periodoFin) {
+  const params = [cuenta, subscriberKey];
+  let sql = "SELECT * FROM notas_credito WHERE ba_no = ? AND service_receiver_id = ?";
+  if (periodoInicio && periodoFin) {
+    sql += " AND effective_date BETWEEN ? AND ?";
+    params.push(periodoInicio, periodoFin);
+  }
+  const [rows] = await pool.query(sql, params);
+  const vistos = new Set();
+  const causas = [];
+  for (const r of rows) {
+    const clave = `${r.charge_code}|${Number(r.amount).toFixed(4)}`;
+    if (vistos.has(clave)) continue;
+    vistos.add(clave);
+    causas.push({
+      tipo: "nota_credito",
+      monto: Number(r.amount),
+      detalle: { clase: r.cancel_charge_type === "CRD" ? "nota de crédito" : "nota de débito", charge_code: r.charge_code },
+    });
+  }
+  return causas;
+}
+
+// Convierte un ciclo tipo 20260807 (INT) a '2026-08-07' para poder
+// compararlo con fechas reales (fecha_fin de descuentos, effective_date de
+// notas de credito, completion_date de ordenes).
+function cicloToFecha(ciclo) {
+  if (!ciclo) return null;
+  const s = String(ciclo);
+  if (s.length !== 8) return null;
+  return `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`;
+}
+
+async function diagnosticar(cuentaRaw, recibo = null, linea = null) {
+  const cuenta = String(cuentaRaw).trim();
+  const recibos = await recibosDeCuenta(cuenta, linea);
+  if (!recibos.length) {
+    return { encontrado: false, error: "No encontramos esa cuenta (o esa línea) en el sistema.", cuenta };
+  }
+
+  let idxActual;
+  if (recibo === null || recibo === undefined) {
+    idxActual = 0;
+  } else {
+    idxActual = recibos.findIndex((r) => r.recibo === recibo);
+    if (idxActual === -1) {
+      return { encontrado: false, error: "Ese recibo no pertenece a esta cuenta.", cuenta };
+    }
+  }
+
+  if (idxActual + 1 >= recibos.length) {
+    const actual = recibos[idxActual];
+    const causaProrrateo = await detectarProrrateo(actual.recibo);
+    if (causaProrrateo) {
+      return {
+        encontrado: true,
+        cuenta,
+        recibo_actual: actual.recibo,
+        recibo_previo: null,
+        ciclo_actual: actual.ciclo,
+        ciclo_previo: null,
+        total_actual: round2(actual.total),
+        total_previo: 0,
+        monto_habitual: 0,
+        diferencia: round2(actual.total),
+        causas: [causaProrrateo],
+        historial: [{ recibo: actual.recibo, ciclo: actual.ciclo, total: round2(actual.total) }],
+      };
+    }
+    return { encontrado: false, error: "No hay un recibo previo con el cual comparar (es el primer recibo de esta línea).", cuenta };
+  }
+
+  const actual = recibos[idxActual];
+  const previo = recibos[idxActual + 1];
+  const historialPrev = recibos.slice(idxActual + 1, idxActual + 6);
+
+  const [lineasActual, lineasPrevio] = await Promise.all([
+    lineasDeRecibo(cuenta, actual.recibo, linea),
+    lineasDeRecibo(cuenta, previo.recibo, linea),
+  ]);
+
+  // OJO: period_start_date/period_end_date vienen vacios en el 100% del
+  // dataset real (problema de la data fuente, no nuestro). Como ventana de
+  // periodo confiable usamos el propio "ciclo" de facturacion (siempre
+  // poblado): desde el ciclo del recibo previo hasta el ciclo del actual.
+  const periodoInicio = cicloToFecha(previo.ciclo);
+  const periodoFin = cicloToFecha(actual.ciclo);
+
+  const prevPorCodigo = {};
+  for (const r of lineasPrevio) {
+    prevPorCodigo[r.charge_code_id] = (prevPorCodigo[r.charge_code_id] || 0) + Number(r.charge_total_amount);
+  }
+  const actPorCodigo = {};
+  const descPorCodigo = {};
+  for (const r of lineasActual) {
+    actPorCodigo[r.charge_code_id] = (actPorCodigo[r.charge_code_id] || 0) + Number(r.charge_total_amount);
+    if (!descPorCodigo[r.charge_code_id]) descPorCodigo[r.charge_code_id] = r;
+  }
+  const deltasPositivos = {};
+  for (const code of Object.keys(actPorCodigo)) {
+    const delta = actPorCodigo[code] - (prevPorCodigo[code] || 0);
+    if (delta > UMBRAL_IGNORAR) deltasPositivos[code] = delta;
+  }
+  const lineasRelevantes = lineasActual.filter((r) => deltasPositivos[r.charge_code_id] !== undefined);
+
+  const [causaProrrateo, causaReconexion, causasDescuento, causasCambioPlan, causasNotasCredito] = await Promise.all([
+    detectarProrrateo(actual.recibo),
+    detectarReconexion(actual.recibo),
+    detectarFinDescuento(cuenta, periodoInicio, periodoFin),
+    detectarCambioPlan(actual.customerKey, periodoInicio, periodoFin, linea),
+    detectarNotasCredito(cuenta, actual.subscriberKey, periodoInicio, periodoFin),
+  ]);
+
+  const causas = [];
+  if (causaProrrateo) causas.push(causaProrrateo);
+  if (causaReconexion) causas.push(causaReconexion);
+  causas.push(...causasDescuento);
+  causas.push(...(await detectarFinanciamiento(lineasRelevantes)));
+  causas.push(...causasCambioPlan);
+  causas.push(...causasNotasCredito);
+
+  const codigosExplicados = new Set(causas.map((c) => c.detalle.charge_code_id).filter(Boolean));
+  const hayReconexion = causas.some((c) => c.tipo === "reconexion");
+  const catalogo = await cargarCatalogo();
+
+  const ordenados = Object.entries(deltasPositivos).sort((a, b) => b[1] - a[1]);
+  for (const [code, delta] of ordenados) {
+    if (codigosExplicados.has(code)) continue;
+    const fila = descPorCodigo[code];
+    const clasif = (fila?.charge_code_classification || "").toLowerCase();
+    const grupo = fila?.grupo || "";
+    if (clasif.includes("financiamiento")) continue;
+    if (hayReconexion && grupo.toLowerCase().includes("reconexion")) continue;
+    causas.push({
+      tipo: "otro",
+      monto: round2(delta),
+      detalle: { concepto: fila?.charge_code_desc || code, grupo: grupo || null, tarifa_oficial: catalogo[code]?.tarifa ?? null },
+    });
+  }
+
+  const diferencia = actual.total - previo.total;
+  const montoHabitual = historialPrev.length
+    ? historialPrev.reduce((s, r) => s + r.total, 0) / historialPrev.length
+    : previo.total;
+
+  return {
+    encontrado: true,
+    cuenta,
+    recibo_actual: actual.recibo,
+    recibo_previo: previo.recibo,
+    ciclo_actual: actual.ciclo,
+    ciclo_previo: previo.ciclo,
+    total_actual: round2(actual.total),
+    total_previo: round2(previo.total),
+    monto_habitual: round2(montoHabitual),
+    diferencia: round2(diferencia),
+    causas,
+    historial: recibos.slice(idxActual, idxActual + 6).map((r) => ({ recibo: r.recibo, ciclo: r.ciclo, total: round2(r.total) })),
+  };
+}
+
+function round2(n) {
+  return Math.round(n * 100) / 100;
+}
+
+// ---------------------------------------------------------------------
+// "Analizar el recibo actual y los recibos previos" (BrainyBill expone
+// factura actual + 5 previas) y "revisar el detalle" -- ambos pedidos
+// textuales de la ficha del Desafio 1, ademas de las causas de variacion.
+// ---------------------------------------------------------------------
+
+function _normalizarLocal(s) {
+  return String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+}
+
+// Hasta 6 recibos (el actual + 5 previos, tal como los expone BrainyBill),
+// con fecha ya resuelta via ciclo para poder matchear "el de julio", etc.
+async function historialRecibos(cuenta, linea) {
+  const recibos = await recibosDeCuenta(cuenta, linea);
+  return recibos.slice(0, 6).map((r) => ({
+    recibo: r.recibo,
+    ciclo: r.ciclo,
+    fecha: cicloToFecha(r.ciclo),
+    total: round2(r.total),
+  }));
+}
+
+const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+
+// Busca en el historial completo (incluye el actual) una referencia a un
+// mes ("el de julio", "en agosto 2026"). Baja probabilidad de falso
+// positivo, asi que se intenta siempre, sin necesitar contexto previo.
+function resolverReferenciaPorMes(historialRec, texto) {
+  const t = _normalizarLocal(texto);
+  let mes = null;
+  for (let i = 0; i < MESES.length; i++) {
+    if (t.includes(MESES[i])) { mes = i + 1; break; }
+  }
+  if (!mes && t.includes("setiembre")) mes = 9;
+  if (!mes) return null;
+  const anioMatch = t.match(/20\d{2}/);
+  const candidato = historialRec.find((r) => {
+    if (!r.fecha) return false;
+    const mm = Number(r.fecha.slice(5, 7));
+    const yyyy = r.fecha.slice(0, 4);
+    return mm === mes && (!anioMatch || yyyy === anioMatch[0]);
+  });
+  return candidato ? candidato.recibo : null;
+}
+
+const ORDINALES = { primero: 0, segundo: 1, tercero: 2, cuarto: 3, quinto: 4, sexto: 5 };
+
+// Busca una referencia por posicion ("el 2", "el segundo", "el mas
+// antiguo") dentro de una lista ya acotada (normalmente "los anteriores",
+// tal como se le mostraron al cliente). Solo se debe usar justo despues de
+// haberle mostrado esa lista -- si no, "el segundo" es ambiguo.
+function resolverReferenciaPorPosicion(listaAcotada, texto) {
+  const t = _normalizarLocal(texto).trim();
+  const numMatch = t.match(/^(\d)\s*$/);
+  if (numMatch) {
+    const idx = Number(numMatch[1]) - 1;
+    return listaAcotada[idx] ? listaAcotada[idx].recibo : null;
+  }
+  for (const [palabra, idx] of Object.entries(ORDINALES)) {
+    if (t.includes(palabra) && listaAcotada[idx]) return listaAcotada[idx].recibo;
+  }
+  if (/mas antigu|el mas viejo/.test(t)) return listaAcotada[listaAcotada.length - 1]?.recibo || null;
+  return null;
+}
+
+// Detalle itemizado (cada concepto, con su monto) del recibo actual --
+// distinto de 'causas', que solo trae lo que VARIO respecto al anterior.
+async function detalleRecibo(cuenta, recibo, linea) {
+  const lineas = await lineasDeRecibo(cuenta, recibo, linea);
+  const porCodigo = {};
+  for (const r of lineas) {
+    const key = r.charge_code_id || r.charge_code_desc;
+    if (!porCodigo[key]) porCodigo[key] = { concepto: r.charge_code_desc, grupo: r.grupo || null, monto: 0 };
+    porCodigo[key].monto += Number(r.charge_total_amount);
+  }
+  return Object.values(porCodigo)
+    .map((c) => ({ ...c, monto: round2(c.monto) }))
+    .sort((a, b) => Math.abs(b.monto) - Math.abs(a.monto));
+}
+
+// "Registrar la consulta" (accion recomendada explicitamente por la
+// ficha, junto a pagar/revisar detalle/derivar a asesor): deja constancia
+// en la misma tabla que la tasa de silencio, con un folio que se le puede
+// dar al cliente.
+async function registrarConsulta(cuenta, canal, resumen) {
+  const [result] = await pool.query(
+    "INSERT INTO satisfaccion_log (cuenta, canal, clasificacion, detalle) VALUES (?, ?, 'consulta_registrada', ?)",
+    [cuenta || null, canal, String(resumen).slice(0, 250)]
+  );
+  return result.insertId;
+}
+
+// Casos de demo ya verificados contra el dataset real (ver historial de
+// exploracion): se listan directo en vez de re-probar por SQL en cada
+// arranque, para que el servidor levante rapido incluso con la DB remota.
+// IMPORTANTE: todas estas cuentas fueron verificadas para que la causa
+// aparezca en su RECIBO ACTUAL (el mas reciente, recibo=null por defecto).
+// Antes teniamos casos donde la causa solo aparecia en un recibo antiguo
+// (ej. de hace 2-3 meses) -- funcionaban en la demo dirigida, pero si
+// alguien solo escribia el numero de cuenta sin el recibo especifico, veia
+// "sin variacion" porque el bot explica el recibo de HOY, no uno viejo.
+// Con estos casos, escribir solo el numero de cuenta ya alcanza.
+const CASOS_DEMO_VERIFICADOS = {
+  prorrateo: [
+    { cuenta: "761826072", recibo: "S9AA-0082929210" },
+    { cuenta: "761761362", recibo: "S1AA-0052899594" },
+    { cuenta: "761776277", recibo: "S1AA-0052947287" },
+  ],
+  reconexion: [
+    { cuenta: "103976720", recibo: "S9AA-0082590016" },
+    { cuenta: "104125317", recibo: "S3AA-0080033306" },
+    { cuenta: "104024667", recibo: "S5AA-0081683506" },
+  ],
+  fin_descuento: [
+    { cuenta: "759739074", recibo: "S8AA-0008372021" },
+    { cuenta: "741244173", recibo: "S8AA-0008274774" },
+    { cuenta: "757749108", recibo: "S8AA-0008377841" },
+  ],
+  financiamiento: [
+    { cuenta: "753362001", recibo: "S1AA-0052482465" },
+    { cuenta: "101130168", recibo: "S1AA-0052791162" },
+    { cuenta: "754497535", recibo: "S1AA-0052822881" },
+  ],
+  cambio_plan: [
+    { cuenta: "727719775", recibo: "S1AA-0052433081" },
+    { cuenta: "700880965", recibo: "S1AA-0052432494" },
+    { cuenta: "702746048", recibo: "S1AA-0052418844" },
+  ],
+  nota_credito: [
+    { cuenta: "102233951", recibo: "S3AA-0080126586" },
+    { cuenta: "103692188", recibo: "S1AA-0052607549" },
+    { cuenta: "308791919", recibo: "S5AA-0082207824" },
+  ],
+  multiservicio: [
+    { cuenta: "300004563" },
+    { cuenta: "319242446" },
+    { cuenta: "600580567" },
+  ],
+};
+
+async function buscarCasosDemo() {
+  return CASOS_DEMO_VERIFICADOS;
+}
+
+// "Efecto Efervescente" (pedido textual de la ficha del reto): busca un
+// beneficio que el cliente YA TIENE incluido en su plan actual (una linea
+// de tipo BONO en su recibo mas reciente), para que el bot se lo recuerde
+// al cerrar la conversacion -- nunca una oferta nueva, solo un valor que
+// ya le pertenece.
+async function buscarBeneficioDestacado(cuenta, linea) {
+  const recibos = await recibosDeCuenta(cuenta, linea);
+  if (!recibos.length) return null;
+  const lineas = await lineasDeRecibo(cuenta, recibos[0].recibo, linea);
+  const bono = lineas.find(
+    (r) =>
+      (r.grupo || "").toUpperCase().includes("BONO") ||
+      (r.charge_code_classification || "").toLowerCase().includes("bono")
+  );
+  if (!bono) return null;
+  return { concepto: bono.charge_code_desc, valor_referencial: Math.abs(Number(bono.charge_total_amount)) };
+}
+
+// Registro de satisfaccion / "tasa de silencio post-explicacion" (tambien
+// pedido textual de la ficha): clasificacion = 'conforme' | 'insatisfecho' | 'silencio'
+async function registrarSatisfaccion(cuenta, canal, clasificacion, detalle = null) {
+  try {
+    await pool.query(
+      "INSERT INTO satisfaccion_log (cuenta, canal, clasificacion, detalle) VALUES (?, ?, ?, ?)",
+      [cuenta || null, canal, clasificacion, detalle]
+    );
+  } catch (e) {
+    console.error("No se pudo registrar satisfaccion:", e.message);
+  }
+}
+
+async function metricasSatisfaccion() {
+  const [porClasificacion] = await pool.query(
+    "SELECT clasificacion, COUNT(*) AS total FROM satisfaccion_log GROUP BY clasificacion"
+  );
+  const [[{ total }]] = await pool.query("SELECT COUNT(*) AS total FROM satisfaccion_log");
+  return { total, por_clasificacion: porClasificacion };
+}
+
+module.exports = {
+  buscarCuenta, recibosDeCuenta, diagnosticar, buscarCasosDemo, LOB_LABELS,
+  buscarBeneficioDestacado, registrarSatisfaccion, metricasSatisfaccion,
+  historialRecibos, resolverReferenciaPorMes, resolverReferenciaPorPosicion,
+  detalleRecibo, registrarConsulta,
+};
