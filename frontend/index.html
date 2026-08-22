@@ -82,6 +82,19 @@
 
   .typing { align-self: flex-start; color: #8a93a3; font-size: 12.5px; padding-left: 4px; }
 
+  /* ---------- Tarjeta de derivacion a agente ---------- */
+  .agente-card-msg {
+    align-self: flex-start; max-width: 88%; background: white; border: 1px solid #d8dde5;
+    border-radius: 16px; padding: 12px 14px; display: flex; gap: 12px; align-items: center;
+    box-shadow: 0 2px 8px rgba(10,37,64,0.08);
+  }
+  .agente-card-msg .avatar-agente { font-size: 32px; width: 48px; height: 48px; border-radius: 50%; background: var(--gris-fondo); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .agente-card-msg .nombre-agente { font-weight: 700; font-size: 14px; color: var(--azul); }
+  .agente-card-msg .area-agente { font-size: 12px; color: #778; margin-top: 1px; }
+  .agente-card-msg .estado-agente { font-size: 11px; color: var(--verde); font-weight: 700; margin-top: 4px; display: flex; align-items: center; gap: 5px; }
+  .agente-card-msg .estado-agente .punto { width: 7px; height: 7px; border-radius: 50%; background: var(--verde); display: inline-block; animation: pulso 1.4s infinite; }
+  @keyframes pulso { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+
   /* ---------- Panel de demo ---------- */
   .demo-panel { position: absolute; inset: 0; background: rgba(10,37,64,0.55); display: none; align-items: flex-end; z-index: 10; }
   .demo-panel.abierto { display: flex; }
@@ -216,6 +229,24 @@ function quitarTyping() {
   if (typingEl) { typingEl.remove(); typingEl = null; }
 }
 
+// Tarjeta visible de derivacion: se muestra cuando el bot deriva a un
+// agente "fake" (roster simulado), para que quede claro CON QUIEN se le
+// esta conectando, no solo un generico "te paso con un asesor".
+function addAgentCard(agente) {
+  const div = document.createElement("div");
+  div.className = "agente-card-msg";
+  div.innerHTML = `
+    <div class="avatar-agente">${agente.avatar}</div>
+    <div>
+      <div class="nombre-agente">${agente.nombre}</div>
+      <div class="area-agente">${agente.area}</div>
+      <div class="estado-agente"><span class="punto"></span> Conectando con el agente…</div>
+    </div>
+  `;
+  chatEl.appendChild(div);
+  chatEl.scrollTop = chatEl.scrollHeight;
+}
+
 function addQuickActions(acciones) {
   if (!acciones || !acciones.length) return;
   const labels = {
@@ -273,6 +304,7 @@ async function enviarMensaje(texto, silencioso) {
     const data = await res.json();
     quitarTyping();
     addMsg(data.respuesta, "bot");
+    if (data.agente) addAgentCard(data.agente);
     addQuickActions(data.acciones);
     historialConversacion.push({ role: "user", content: texto }, { role: "bot", content: data.respuesta });
   } catch (e) {
@@ -381,7 +413,7 @@ function reiniciarSesion() {
   btnSalir.style.display = "none";
   input.placeholder = "Escribe tu número de cuenta…";
   chatEl.innerHTML = "";
-  addMsg("¡Hola! 👋 Soy tu asistente de facturación Movistar. Para comenzar, cuéntame tu número de cuenta.", "bot");
+  addMsg("¡Hola! 👋 Soy Lucía Explica, tu asistente de facturación Movistar. Para comenzar, cuéntame tu número de cuenta.", "bot");
 }
 
 btnSalir.addEventListener("click", reiniciarSesion);

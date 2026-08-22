@@ -512,6 +512,138 @@ async function metricasSatisfaccion() {
   return { total, por_clasificacion: porClasificacion };
 }
 
+// Calificacion explicita 1-5 que el bot pide al cliente justo cuando cierra
+// la conversacion (despues de "algo mas?" -> "no"). Vive en la misma tabla
+// que la satisfaccion inferida por palabras clave, como una columna aparte
+// (puntaje), para tener ambas senales sin duplicar tablas.
+async function registrarCalificacion(cuenta, canal, puntaje, detalle = null) {
+  await pool.query(
+    "INSERT INTO satisfaccion_log (cuenta, canal, clasificacion, puntaje, detalle) VALUES (?, ?, 'calificado', ?, ?)",
+    [cuenta || null, canal, puntaje, detalle ? String(detalle).slice(0, 250) : null]
+  );
+}
+
+async function metricasCalificacion() {
+  const [[{ total, promedio }]] = await pool.query(
+    "SELECT COUNT(*) AS total, AVG(puntaje) AS promedio FROM satisfaccion_log WHERE puntaje IS NOT NULL"
+  );
+  const [distribucionRaw] = await pool.query(
+    "SELECT puntaje, COUNT(*) AS total FROM satisfaccion_log WHERE puntaje IS NOT NULL GROUP BY puntaje"
+  );
+  const distribucion = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  for (const r of distribucionRaw) distribucion[r.puntaje] = r.total;
+  return { total, promedio: promedio ? Number(promedio) : null, distribucion };
+}
+
+// Registro de cada derivacion a un agente "fake" -- lo que hace visible en
+// el panel interno (y auditable) que la derivacion realmente ocurrio, con
+// que agente y con que contexto se le paso.
+async function registrarDerivacion(cuenta, canal, telefono, agenteNombre, agenteArea, contexto) {
+  await pool.query(
+    "INSERT INTO derivaciones_asesor (cuenta, canal, telefono, agente_nombre, agente_area, contexto) VALUES (?, ?, ?, ?, ?, ?)",
+    [cuenta || null, canal, telefono || null, agenteNombre, agenteArea, contexto ? String(contexto).slice(0, 2000) : null]
+  );
+}
+
+// Recorre TODAS las interacciones que pasaron por Claude (hechos != null,
+// las deterministicas no aplican -- no hay nada que alucinar) y repite la
+// MISMA verificacion que ya hace el panel por mensaje (todo monto S/X.XX
+// citado en la respuesta debe existir en los hechos que se le pasaron a la
+// IA), pero agregada en un porcentaje global -- para poder asegurar en todo
+// momento que el sistema sigue en 0% alucinaciones financieras.
+function _montosDeHechos(obj, acc) {
+  acc = acc || new Set();
+  if (obj === null || obj === undefined) return acc;
+  if (typeof obj === "number") { acc.add(obj.toFixed(2)); return acc; }
+  if (Array.isArray(obj)) { obj.forEach((v) => _montosDeHechos(v, acc)); return acc; }
+  if (typeof obj === "object") { Object.values(obj).forEach((v) => _montosDeHechos(v, acc)); return acc; }
+  return acc;
+}
+function _montosDeTexto(texto) {
+  const matches = (texto || "").match(/\d[\d,]*\.\d{2}/g) || [];
+  return [...new Set(matches.map((m) => Number(m.replace(/,/g, "")).toFixed(2)))];
+}
+
+async function metricasAlucinaciones() {
+  const [rows] = await pool.query("SELECT hechos, respuesta FROM interacciones_log WHERE hechos IS NOT NULL");
+  let sinAlucinaciones = 0;
+  const flagueadas = [];
+  for (const r of rows) {
+    const hechos = typeof r.hechos === "string" ? JSON.parse(r.hechos) : r.hechos;
+    const montosHechos = _montosDeHechos(hechos);
+    const montosResp = _montosDeTexto(r.respuesta);
+    const sinRespaldo = montosResp.filter((m) => !montosHechos.has(m));
+    if (sinRespaldo.length === 0) {
+      sinAlucinaciones++;
+    } else {
+      flagueadas.push({ montos_sin_respaldo: sinRespaldo, respuesta: r.respuesta });
+    }
+  }
+  const total = rows.length;
+  return {
+    total_analizadas: total,
+    sin_alucinaciones: sinAlucinaciones,
+    con_alerta: flagueadas.length,
+    porcentaje_confiable: total ? Number(((sinAlucinaciones / total) * 100).toFixed(1)) : 100,
+    flagueadas: flagueadas.slice(0, 10),
+  };
+}
+
+// Cuantos clientes distintos (por telefono si es WhatsApp, por cuenta si es
+// web) tuvieron al menos una interaccion cada dia, para el grafico de
+// "clientes atendidos por dia".
+async function clientesPorDia(dias = 14) {
+  const [rows] = await pool.query(
+    `SELECT DATE(creado_en) AS dia, COUNT(DISTINCT COALESCE(telefono, cuenta)) AS clientes
+     FROM interacciones_log
+     WHERE creado_en >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+     GROUP BY DATE(creado_en) ORDER BY dia`,
+    [dias]
+  );
+  return rows.map((r) => ({ dia: String(r.dia).slice(0, 10), clientes: r.clientes }));
+}
+
+// Un solo recorrido de interacciones_log para dos cosas a la vez: (1) que
+// causa de variacion aparece mas seguido (el "problema mas repetido" que
+// pide el panel), y (2) cuantas veces se mostro de verdad el beneficio del
+// Efecto Efervescente (queda registrado dentro de "hechos.beneficio" cuando
+// aplica -- ver llm.js).
+async function analiticaCausasYBeneficio() {
+  const [rows] = await pool.query("SELECT hechos FROM interacciones_log WHERE hechos IS NOT NULL");
+  const conteoCausas = {};
+  let beneficioMostrado = 0;
+  for (const r of rows) {
+    const hechos = typeof r.hechos === "string" ? JSON.parse(r.hechos) : r.hechos;
+    if (hechos && hechos.beneficio) beneficioMostrado++;
+    const causas = hechos?.causas || [];
+    for (const c of causas) {
+      if (!c?.tipo) continue;
+      conteoCausas[c.tipo] = (conteoCausas[c.tipo] || 0) + 1;
+    }
+  }
+  const problemasFrecuentes = Object.entries(conteoCausas)
+    .map(([tipo, total]) => ({ tipo, total }))
+    .sort((a, b) => b.total - a.total);
+  return { problemasFrecuentes, beneficioMostrado };
+}
+
+async function derivacionesTotal() {
+  const [[{ total }]] = await pool.query("SELECT COUNT(*) AS total FROM derivaciones_asesor");
+  return total;
+}
+
+async function derivacionesRecientes(limit = 30) {
+  const n = Math.min(Math.max(Number(limit) || 30, 1), 200);
+  const [rows] = await pool.query(
+    `SELECT id, cuenta, canal, telefono, agente_nombre, agente_area, contexto, creado_en
+     FROM derivaciones_asesor ORDER BY id DESC LIMIT ${n}`
+  );
+  return rows.map((r) => ({
+    ...r,
+    creado_en: r.creado_en ? String(r.creado_en).replace(" ", "T") + "Z" : null,
+  }));
+}
+
 // Log de auditoria "0% alucinaciones" (dashboard interno, no lo ve el
 // cliente): guarda los hechos exactos que se le pasaron a Claude junto con
 // lo que respondio, para poder demostrar despues que nunca cito un monto
@@ -554,4 +686,6 @@ module.exports = {
   buscarBeneficioDestacado, registrarSatisfaccion, metricasSatisfaccion,
   historialRecibos, resolverReferenciaPorMes, resolverReferenciaPorPosicion,
   detalleRecibo, registrarConsulta, registrarInteraccion, interaccionesRecientes,
+  registrarCalificacion, metricasCalificacion, registrarDerivacion, derivacionesRecientes,
+  metricasAlucinaciones, clientesPorDia, analiticaCausasYBeneficio, derivacionesTotal,
 };

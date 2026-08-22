@@ -8,6 +8,7 @@ const engine = require("./engine");
 const assistant = require("./assistant");
 const nlg = require("./nlg");
 const whatsapp = require("./whatsapp");
+const agentes = require("./agentes");
 
 const app = express();
 
@@ -84,6 +85,42 @@ app.post("/api/chat", async (req, res) => {
 // Metricas de la "tasa de silencio post-explicacion" pedida por la ficha.
 app.get("/api/metricas/satisfaccion", async (req, res) => {
   res.json(await engine.metricasSatisfaccion());
+});
+
+// Promedio y distribucion de la calificacion 1-5 que el bot pide al cerrar.
+app.get("/api/metricas/calificaciones", async (req, res) => {
+  res.json(await engine.metricasCalificacion());
+});
+
+// Roster de agentes "fake" para el panel interno (seccion Agentes).
+app.get("/api/agentes", (req, res) => {
+  res.json(agentes.AGENTES);
+});
+
+// Derivaciones recientes a agentes, para que quede visible en el panel
+// interno que la derivacion realmente ocurrio (con quien y con que contexto).
+app.get("/api/derivaciones", async (req, res) => {
+  res.json(await engine.derivacionesRecientes(req.query.limit));
+});
+
+// Porcentaje de respuestas de la IA sin alucinaciones financieras (todo
+// monto citado respaldado por los hechos que se le pasaron a Claude),
+// calculado sobre TODAS las interacciones registradas, no solo las recientes.
+app.get("/api/metricas/alucinaciones", async (req, res) => {
+  res.json(await engine.metricasAlucinaciones());
+});
+
+// Bloque de analitica para el panel: clientes atendidos por dia, problema
+// mas repetido, y cuantas veces se mostro el beneficio del Efecto
+// Efervescente. Se combina en un solo endpoint para que el dashboard haga
+// un solo fetch en vez de tres.
+app.get("/api/metricas/analitica", async (req, res) => {
+  const [clientesPorDia, causasYBeneficio, derivacionesTotal] = await Promise.all([
+    engine.clientesPorDia(14),
+    engine.analiticaCausasYBeneficio(),
+    engine.derivacionesTotal(),
+  ]);
+  res.json({ clientesPorDia, ...causasYBeneficio, derivacionesTotal });
 });
 
 // Log de auditoria interno (dashboard): hechos vs. respuesta de cada

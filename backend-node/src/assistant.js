@@ -15,6 +15,7 @@
 const engine = require("./engine");
 const nlg = require("./nlg");
 const llm = require("./llm");
+const agentes = require("./agentes");
 
 const PALABRAS_ASESOR = ["asesor", "humano", "persona", "agente", "hablar con alguien", "representante"];
 const PALABRAS_PAGAR = ["pagar", "como pago", "donde pago", "quiero pagar"];
@@ -43,6 +44,17 @@ const PALABRAS_NEGACION_CIERRE = ["no gracias", "no, gracias", "no nada mas", "n
 // una seleccion por numero/posicion (que solo tiene sentido justo despues).
 const MARCA_LISTADO_RECIBOS = "cual quieres que te explique";
 
+// Mismo patron para la calificacion: marca literal y fija (mensaje
+// deterministico, no redactado por Claude) para poder detectar con certeza,
+// en el turno SIGUIENTE, que lo que sigue es la respuesta a "califica del 1
+// al 5" y no un mensaje cualquiera. Si fuera un mensaje de Claude (variable)
+// no podriamos anclar la deteccion de forma confiable.
+const MARCA_PEDIR_CALIFICACION = "calificarias esta atencion";
+const MENSAJES_PEDIR_CALIFICACION = [
+  "¡Genial! Antes de despedirme, ¿del 1 al 5 cómo calificarías esta atención? (1 = mala, 5 = excelente) ⭐",
+  "¡De nada! Una última cosa: ¿del 1 al 5 cómo calificarías esta atención? (1 = mala, 5 = excelente) ⭐",
+];
+
 const MESES_LARGO = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
 function formatearMes(fechaIso) {
@@ -61,6 +73,20 @@ function botMostroListaRecibos(historial) {
   const ultimoBot = [...historial].reverse().find((h) => h.role === "bot");
   if (!ultimoBot) return false;
   return normalizar(ultimoBot.content).includes(MARCA_LISTADO_RECIBOS);
+}
+
+function botPidioCalificacion(historial) {
+  const ultimoBot = [...historial].reverse().find((h) => h.role === "bot");
+  if (!ultimoBot) return false;
+  return normalizar(ultimoBot.content).includes(MARCA_PEDIR_CALIFICACION);
+}
+
+// Acepta un digito 1-5 solo, o dentro de una frase corta ("le doy un 4", "4
+// estrellas"). No intenta interpretar palabras ("excelente", "mala") para
+// mantener el parseo simple y sin ambiguedad.
+function parseCalificacion(texto) {
+  const m = texto.match(/\b([1-5])\b/);
+  return m ? Number(m[1]) : null;
 }
 
 function esNegacionCierre(texto) {
@@ -144,16 +170,20 @@ async function responder(cuenta, mensaje, recibo = null, linea = null, historial
   if (contieneAlguna(texto, PALABRAS_ASESOR)) {
     const diag = await engine.diagnosticar(cuenta, recibo, linea);
     const contexto = nlg.resumenParaAsesor(diag);
+    const agente = agentes.elegirAgente();
     engine.registrarSatisfaccion(cuenta, canal, "insatisfecho", "solicito hablar con un asesor").catch(() => {});
+    engine.registrarDerivacion(cuenta, canal, telefono, agente.nombre, agente.area, contexto).catch(() => {});
     const respuesta =
-      "Listo, te conecto con un asesor y ya le compartí el contexto de tu consulta " +
-      "(tu recibo, el anterior, y la causa detectada) para que no tengas que repetir todo.";
+      `Listo, te conecto con ${agente.avatar} **${agente.nombre}** (${agente.area}). ` +
+      "Ya le compartí el contexto de tu consulta (tu recibo, el anterior, y la causa detectada) " +
+      "para que no tengas que repetir todo.";
     registrar(cuenta, canal, telefono, hechosDesdeDiagnostico(diag), respuesta, mensaje);
     return {
       respuesta,
       acciones: ["derivar_asesor"],
       contexto_asesor: contexto,
       satisfaccion: "insatisfecho",
+      agente,
     };
   }
 
@@ -227,25 +257,50 @@ async function responder(cuenta, mensaje, recibo = null, linea = null, historial
     return { respuesta, acciones: diagHist.encontrado ? ["hablar_con_asesor"] : [] };
   }
 
+  // Si el bot ACABA de pedir la calificacion 1-5 (mensaje fijo, ver mas
+  // abajo) y este turno trae un numero valido, la registramos y recien ahi
+  // cerramos de verdad con el Efecto Efervescente -- todo esto antes de
+  // cualquier otra logica de cierre para no pisarnos con PALABRAS_CIERRE.
+  if (botPidioCalificacion(historial)) {
+    const puntaje = parseCalificacion(texto);
+    if (puntaje) {
+      await engine.registrarCalificacion(cuenta, canal, puntaje, mensaje);
+      engine.registrarSatisfaccion(cuenta, canal, "conforme", `calificacion ${puntaje}/5`).catch(() => {});
+      const [diag, beneficioRaw] = await Promise.all([
+        engine.diagnosticar(cuenta, recibo, linea),
+        engine.buscarBeneficioDestacado(cuenta, linea),
+      ]);
+      const { texto: respuesta, hechos } = await llm.responderConversacion({ diag, historial, mensajeUsuario: mensaje, beneficio: beneficioRaw });
+      registrar(cuenta, canal, telefono, hechos, respuesta, mensaje);
+      return { respuesta, acciones: [], satisfaccion: "conforme", beneficioMostrado: !!beneficioRaw, calificacionRecibida: puntaje };
+    }
+    // Si no llego un numero 1-5 valido, no insistimos -- seguimos abajo y
+    // Claude responde con naturalidad a lo que sea que haya dicho.
+  }
+
   let satisfaccion;
   if (contieneAlguna(texto, PALABRAS_CIERRE)) {
     satisfaccion = "conforme";
     engine.registrarSatisfaccion(cuenta, canal, "conforme", mensaje).catch(() => {});
   }
 
-  // El beneficio solo se muestra cuando el bot pregunto "algo mas?" y el
-  // cliente dice que no -- ese es el cierre real de la conversacion.
-  const mostrarBeneficio =
+  // El cierre real (bot pregunto "algo mas?" y el cliente dice que no) ya no
+  // muestra el beneficio de inmediato: primero pedimos la calificacion 1-5
+  // con un mensaje fijo (deterministico, para poder detectarlo con certeza
+  // en el siguiente turno) -- el Efecto Efervescente se muestra recien
+  // despues, junto con el agradecimiento por la nota.
+  const esCierreReal =
     esNegacionCierre(texto) && botPreguntoSiAlgoMas(historial) && !yaHuboCierreEfectivo(historial);
+  if (esCierreReal) {
+    const respuesta = MENSAJES_PEDIR_CALIFICACION[Math.floor(Math.random() * MENSAJES_PEDIR_CALIFICACION.length)];
+    registrar(cuenta, canal, telefono, null, respuesta, mensaje);
+    return { respuesta, acciones: [], satisfaccion };
+  }
 
   // Conversacion real: Claude ve los hechos del recibo + glosario + historial
-  // + (solo si corresponde) un beneficio ya incluido en el plan, y responde
-  // a lo que efectivamente se le pregunto -- no siempre lo mismo.
-  const [diag, beneficioRaw] = await Promise.all([
-    engine.diagnosticar(cuenta, recibo, linea),
-    mostrarBeneficio ? engine.buscarBeneficioDestacado(cuenta, linea) : Promise.resolve(null),
-  ]);
-  const { texto: respuesta, hechos } = await llm.responderConversacion({ diag, historial, mensajeUsuario: mensaje, beneficio: beneficioRaw });
+  // y responde a lo que efectivamente se le pregunto.
+  const diag = await engine.diagnosticar(cuenta, recibo, linea);
+  const { texto: respuesta, hechos } = await llm.responderConversacion({ diag, historial, mensajeUsuario: mensaje });
   registrar(cuenta, canal, telefono, hechos, respuesta, mensaje);
 
   // Las "siguientes acciones" que pide la ficha (pagar, revisar detalle,
@@ -256,7 +311,7 @@ async function responder(cuenta, mensaje, recibo = null, linea = null, historial
     : [];
   if (diag.encontrado && diag.diferencia > 0.5) acciones.unshift("ver_detalle");
 
-  return { respuesta, acciones, satisfaccion, beneficioMostrado: mostrarBeneficio && !!beneficioRaw };
+  return { respuesta, acciones, satisfaccion };
 }
 
 module.exports = { responder };
