@@ -26,19 +26,25 @@ Reglas estrictas (no negociables):
 - Responde en texto plano, máximo 6 líneas. Puedes usar *texto* (un solo asterisco a cada lado) para resaltar montos importantes.
 - No agregues saludos ni despedidas, ve directo a la explicación.`;
 
+// Devuelve { texto, hechos } -- "hechos" se expone para que quien llame
+// (assistant.js / whatsappSessions.js) pueda registrar la interaccion
+// completa en un solo lugar, junto con TODOS los demas turnos de la
+// conversacion (no solo los que pasan por Claude).
 async function explicarVariacionLLM(diag) {
+  const hechos = diag.encontrado
+    ? {
+        primer_recibo: !diag.recibo_previo,
+        total_actual: diag.total_actual,
+        total_previo: diag.total_previo,
+        diferencia: diag.diferencia,
+        causas: diag.causas.map((c) => ({ tipo: c.tipo, monto: c.monto, detalle: c.detalle })),
+      }
+    : { error: diag.error || "No se encontró información de recibo." };
+
   const anthropic = getClient();
   if (!anthropic || !diag.encontrado) {
-    return nlg.explicarVariacion(diag);
+    return { texto: nlg.explicarVariacion(diag), hechos };
   }
-
-  const hechos = {
-    primer_recibo: !diag.recibo_previo,
-    total_actual: diag.total_actual,
-    total_previo: diag.total_previo,
-    diferencia: diag.diferencia,
-    causas: diag.causas.map((c) => ({ tipo: c.tipo, monto: c.monto, detalle: c.detalle })),
-  };
 
   try {
     const msg = await anthropic.messages.create({
@@ -54,10 +60,10 @@ async function explicarVariacionLLM(diag) {
     });
     const texto = msg.content?.[0]?.text?.trim();
     if (!texto) throw new Error("Respuesta vacía de Claude");
-    return texto;
+    return { texto, hechos };
   } catch (e) {
     console.error("Error llamando a Claude, usando plantillas de respaldo:", e.message);
-    return nlg.explicarVariacion(diag);
+    return { texto: nlg.explicarVariacion(diag), hechos };
   }
 }
 
@@ -140,11 +146,6 @@ El cliente pidió ver el detalle/desglose de su recibo. Preséntaselo ordenado (
 `;
 
 async function responderConversacion({ diag, historial = [], mensajeUsuario, beneficio = null, detalle = null }) {
-  const anthropic = getClient();
-  if (!anthropic) {
-    return nlg.explicarVariacion(diag);
-  }
-
   const hechos = diag.encontrado
     ? {
         primer_recibo: !diag.recibo_previo,
@@ -154,6 +155,12 @@ async function responderConversacion({ diag, historial = [], mensajeUsuario, ben
         causas: diag.causas.map((c) => ({ tipo: c.tipo, monto: c.monto, detalle: c.detalle })),
       }
     : { error: diag.error || "No se encontró información de recibo para esta consulta." };
+  const hechosCompletos = beneficio || detalle ? { ...hechos, beneficio, detalle } : hechos;
+
+  const anthropic = getClient();
+  if (!anthropic) {
+    return { texto: nlg.explicarVariacion(diag), hechos: hechosCompletos };
+  }
 
   // Las decisiones de SI corresponde mostrar cada bloque extra ya las tomo
   // assistant.js de forma deterministica (mensaje de cierre para el
@@ -182,10 +189,10 @@ async function responderConversacion({ diag, historial = [], mensajeUsuario, ben
     });
     const texto = msg.content?.[0]?.text?.trim();
     if (!texto) throw new Error("Respuesta vacía de Claude");
-    return texto;
+    return { texto, hechos: hechosCompletos };
   } catch (e) {
     console.error("Error en conversación LLM, usando plantillas de respaldo:", e.message);
-    return nlg.explicarVariacion(diag);
+    return { texto: nlg.explicarVariacion(diag), hechos: hechosCompletos };
   }
 }
 

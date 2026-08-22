@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Lucía Explica · Panel interno</title>
+<style>
+  :root {
+    --azul: #0a2540;
+    --azul-claro: #0f3460;
+    --naranja: #ff6a00;
+    --gris-fondo: #eef1f5;
+    --gris-borde: #d8dde5;
+    --verde: #1fae5c;
+    --verde-bg: #d7f5e3;
+    --verde-burbuja: #d9fdd3;
+    --rojo: #c0392b;
+    --rojo-bg: #fbe2df;
+    --chat-fondo: #e9dfd3;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    background: var(--gris-fondo);
+    color: #1b1f27;
+    display: flex;
+    flex-direction: column;
+  }
+  header {
+    background: linear-gradient(135deg, var(--azul), var(--azul-claro));
+    color: white;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  header h1 { margin: 0; font-size: 17px; font-weight: 800; }
+  header h1 span { color: var(--naranja); }
+  header .metricas { display: flex; gap: 14px; font-size: 12px; flex-wrap: wrap; }
+  header .metricas b { font-size: 14px; }
+  header .metricas .item { opacity: .92; }
+
+  .layout { flex: 1; display: flex; min-height: 0; }
+
+  /* ---------- Panel izquierdo: lista de chats ---------- */
+  .lista-chats {
+    width: 320px; flex-shrink: 0; background: white; border-right: 1px solid var(--gris-borde);
+    overflow-y: auto;
+  }
+  .lista-chats .titulo {
+    padding: 12px 16px; font-size: 12.5px; font-weight: 700; color: #667;
+    text-transform: uppercase; letter-spacing: .3px; border-bottom: 1px solid var(--gris-borde);
+    position: sticky; top: 0; background: white;
+  }
+  .chat-row {
+    display: flex; gap: 10px; padding: 11px 16px; cursor: pointer; border-bottom: 1px solid #f0f2f5;
+    align-items: center;
+  }
+  .chat-row:hover { background: var(--gris-fondo); }
+  .chat-row.activo { background: #e7f0fa; }
+  .avatar {
+    width: 42px; height: 42px; border-radius: 50%; background: var(--azul-claro); color: white;
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px;
+    flex-shrink: 0;
+  }
+  .chat-row .info { min-width: 0; flex: 1; }
+  .chat-row .top-line { display: flex; justify-content: space-between; gap: 6px; }
+  .chat-row .contacto { font-weight: 700; font-size: 13.5px; color: #1b1f27; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chat-row .hora { font-size: 11px; color: #889; flex-shrink: 0; }
+  .chat-row .previa { font-size: 12.5px; color: #667; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  .chat-row .sub { font-size: 11px; color: #99a; }
+  .canal-pill {
+    font-size: 9.5px; text-transform: uppercase; font-weight: 700; padding: 1px 6px; border-radius: 999px;
+    background: #e4e8ee; color: #556; margin-left: 6px;
+  }
+  .canal-pill.whatsapp { background: #d7f5e3; color: #1fae5c; }
+
+  /* ---------- Panel derecho: conversacion ---------- */
+  .conversacion { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .conversacion .cabecera {
+    background: white; border-bottom: 1px solid var(--gris-borde); padding: 12px 20px;
+    display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+  }
+  .conversacion .cabecera .nombre { font-weight: 700; font-size: 14.5px; color: var(--azul); }
+  .conversacion .cabecera .sub { font-size: 11.5px; color: #889; }
+
+  .mensajes {
+    flex: 1; overflow-y: auto; padding: 18px 22px; background: var(--chat-fondo);
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .burbuja-wrap { display: flex; flex-direction: column; margin-bottom: 8px; }
+  .burbuja-wrap.user { align-items: flex-end; }
+  .burbuja-wrap.bot { align-items: flex-start; }
+  .burbuja {
+    max-width: 62%; padding: 8px 12px; border-radius: 10px; font-size: 13.5px; line-height: 1.45;
+    white-space: pre-wrap; word-break: break-word; box-shadow: 0 1px 1px rgba(0,0,0,.08);
+  }
+  .burbuja-wrap.user .burbuja { background: var(--verde-burbuja); border-top-right-radius: 2px; }
+  .burbuja-wrap.bot .burbuja { background: white; border-top-left-radius: 2px; }
+  .burbuja mark { background: #fff3b0; border-radius: 3px; padding: 0 2px; }
+  .burbuja mark.no-verificado { background: var(--rojo-bg); color: var(--rojo); }
+  .meta-burbuja { font-size: 10.5px; color: #99a; margin-top: 2px; display: flex; align-items: center; gap: 6px; }
+  .meta-burbuja .badge-mini { font-weight: 700; padding: 1px 6px; border-radius: 999px; cursor: pointer; }
+  .meta-burbuja .badge-mini.ok { background: var(--verde-bg); color: var(--verde); }
+  .meta-burbuja .badge-mini.alerta { background: var(--rojo-bg); color: var(--rojo); }
+  .hechos-panel {
+    max-width: 62%; margin-top: 4px; background: #fbfbfc; border: 1px dashed var(--gris-borde);
+    border-radius: 8px; padding: 8px 10px; display: none;
+  }
+  .hechos-panel.abierto { display: block; }
+  .hechos-panel pre { margin: 0; font-size: 11px; white-space: pre-wrap; word-break: break-word; }
+
+  .estado-vacio { margin: auto; text-align: center; color: #889; font-size: 13.5px; }
+  .cargando { color: #889; font-size: 13px; padding: 30px; text-align: center; }
+</style>
+</head>
+<body>
+<header>
+  <h1>mi<span>Movistar</span> · Panel interno — Lucía Explica</h1>
+  <div class="metricas" id="metricasHeader"><span class="item">Cargando métricas…</span></div>
+</header>
+
+<div class="layout">
+  <div class="lista-chats">
+    <div class="titulo">Conversaciones</div>
+    <div id="listaChats"><div class="cargando">Cargando…</div></div>
+  </div>
+  <div class="conversacion">
+    <div id="cabeceraConversacion" style="display:none" class="cabecera">
+      <div class="avatar" id="avatarActivo">?</div>
+      <div>
+        <div class="nombre" id="nombreActivo"></div>
+        <div class="sub" id="subActivo"></div>
+      </div>
+    </div>
+    <div class="mensajes" id="panelMensajes">
+      <div class="estado-vacio">Selecciona una conversación de la izquierda para ver los mensajes.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = "/api";
+let CHATS = [];
+let chatActivoKey = null;
+
+function fmtHora(iso) {
+  const d = new Date(iso);
+  return d.toLocaleString("es-PE", { hour: "2-digit", minute: "2-digit", timeZone: "America/Lima" });
+}
+function fmtFechaCorta(iso) {
+  const d = new Date(iso);
+  return d.toLocaleString("es-PE", { day: "2-digit", month: "short", timeZone: "America/Lima" });
+}
+function esc(s) {
+  return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+function formatearTelefono(t) {
+  if (!t) return null;
+  const solo = String(t).replace(/\D/g, "");
+  if (solo.startsWith("51") && solo.length === 11) {
+    return `+51 ${solo.slice(2,5)} ${solo.slice(5,8)} ${solo.slice(8)}`;
+  }
+  return `+${solo}`;
+}
+
+// ---------- Verificacion automatica de montos (hechos vs respuesta) ----------
+function flattenNumeros(obj, acc) {
+  acc = acc || new Set();
+  if (obj === null || obj === undefined) return acc;
+  if (typeof obj === "number") { acc.add(obj.toFixed(2)); return acc; }
+  if (Array.isArray(obj)) { obj.forEach((v) => flattenNumeros(v, acc)); return acc; }
+  if (typeof obj === "object") { Object.values(obj).forEach((v) => flattenNumeros(v, acc)); return acc; }
+  return acc;
+}
+function extraerMontos(texto) {
+  const matches = (texto || "").match(/\d[\d,]*\.\d{2}/g) || [];
+  return [...new Set(matches.map((m) => Number(m.replace(/,/g, "")).toFixed(2)))];
+}
+function verificarInteraccion(hechos, respuesta) {
+  // hechos == null significa que esta respuesta es 100% automatica/fija
+  // (no paso por Claude) -- no hay nada que auditar, asi que "no aplica"
+  // en vez de marcarla como sospechosa.
+  if (!hechos) return { ok: null, noEncontrados: [], totalCitados: 0 };
+  const montosHechos = flattenNumeros(hechos);
+  const montosResp = extraerMontos(respuesta);
+  const noEncontrados = montosResp.filter((m) => !montosHechos.has(m));
+  return { ok: noEncontrados.length === 0, noEncontrados, totalCitados: montosResp.length };
+}
+function resaltarMontos(texto, noEncontrados) {
+  const set = new Set(noEncontrados);
+  return esc(texto).replace(/\d[\d,]*\.\d{2}/g, (m) => {
+    const norm = Number(m.replace(/,/g, "")).toFixed(2);
+    return set.has(norm) ? `<mark class="no-verificado">${m}</mark>` : `<mark>${m}</mark>`;
+  });
+}
+
+async function cargarMetricasHeader() {
+  const el = document.getElementById("metricasHeader");
+  try {
+    const res = await fetch(`${API}/metricas/satisfaccion`);
+    const data = await res.json();
+    const porClas = {};
+    (data.por_clasificacion || []).forEach((r) => { porClas[r.clasificacion] = r.total; });
+    el.innerHTML = `
+      <span class="item"><b>${data.total}</b> registradas</span>
+      <span class="item">✅ <b>${porClas.conforme || 0}</b> conformes</span>
+      <span class="item">😕 <b>${porClas.insatisfecho || 0}</b> insatisfechos</span>
+      <span class="item">🔇 <b>${porClas.silencio || 0}</b> por silencio</span>
+      <span class="item">📝 <b>${porClas.consulta_registrada || 0}</b> consultas registradas</span>
+    `;
+  } catch (e) {
+    el.innerHTML = '<span class="item">No se pudieron cargar las métricas.</span>';
+  }
+}
+
+function agruparPorConversacion(logs) {
+  const grupos = new Map();
+  const ordenAsc = [...logs].reverse(); // logs vienen mas reciente primero; los ponemos cronologicos
+  for (const log of ordenAsc) {
+    const key = log.telefono ? `wa-${log.telefono}` : `web-${log.cuenta || "sin-cuenta"}`;
+    if (!grupos.has(key)) {
+      grupos.set(key, { key, telefono: log.telefono, cuenta: log.cuenta, canal: log.canal, mensajes: [] });
+    }
+    const g = grupos.get(key);
+    g.mensajes.push(log);
+    g.cuenta = log.cuenta || g.cuenta;
+  }
+  return [...grupos.values()].sort((a, b) => {
+    const ta = new Date(a.mensajes[a.mensajes.length - 1].creado_en).getTime();
+    const tb = new Date(b.mensajes[b.mensajes.length - 1].creado_en).getTime();
+    return tb - ta;
+  });
+}
+
+function renderizarListaChats() {
+  const el = document.getElementById("listaChats");
+  if (!CHATS.length) {
+    el.innerHTML = '<div class="cargando">Todavía no hay conversaciones registradas. Escríbele al bot para generar la primera.</div>';
+    return;
+  }
+  el.innerHTML = CHATS.map((c) => {
+    const telefonoFmt = formatearTelefono(c.telefono);
+    const contacto = telefonoFmt || `Cuenta ${c.cuenta || "?"}`;
+    const inicial = (telefonoFmt || c.cuenta || "?").replace(/\D/g, "").slice(-2) || "??";
+    const ultimo = c.mensajes[c.mensajes.length - 1];
+    const previa = ultimo.respuesta ? ultimo.respuesta.replace(/\*/g, "").slice(0, 48) : "";
+    const activo = c.key === chatActivoKey ? "activo" : "";
+    return `
+      <div class="chat-row ${activo}" data-key="${c.key}">
+        <div class="avatar">${inicial}</div>
+        <div class="info">
+          <div class="top-line">
+            <span class="contacto">${esc(contacto)}</span>
+            <span class="hora">${fmtHora(ultimo.creado_en)}</span>
+          </div>
+          <div class="previa">${esc(previa)}${previa.length >= 48 ? "…" : ""}</div>
+          <div class="sub">Cuenta ${esc(c.cuenta || "—")} <span class="canal-pill ${c.canal}">${esc(c.canal || "?")}</span></div>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  el.querySelectorAll(".chat-row").forEach((row) => {
+    row.addEventListener("click", () => abrirChat(row.dataset.key));
+  });
+}
+
+function abrirChat(key) {
+  chatActivoKey = key;
+  const chat = CHATS.find((c) => c.key === key);
+  if (!chat) return;
+
+  renderizarListaChats();
+
+  const telefonoFmt = formatearTelefono(chat.telefono);
+  const contacto = telefonoFmt || `Cuenta ${chat.cuenta || "?"}`;
+  document.getElementById("cabeceraConversacion").style.display = "flex";
+  document.getElementById("avatarActivo").textContent = (telefonoFmt || chat.cuenta || "?").replace(/\D/g, "").slice(-2) || "??";
+  document.getElementById("nombreActivo").textContent = contacto;
+  document.getElementById("subActivo").textContent = `Cuenta ${chat.cuenta || "—"} · ${chat.canal === "whatsapp" ? "WhatsApp" : "Web"}`;
+
+  const panel = document.getElementById("panelMensajes");
+  let ultimaFecha = null;
+  const bloques = [];
+  chat.mensajes.forEach((log, idx) => {
+    const fechaCorta = fmtFechaCorta(log.creado_en);
+    if (fechaCorta !== ultimaFecha) {
+      bloques.push(`<div style="align-self:center;background:rgba(255,255,255,.7);border-radius:8px;padding:3px 10px;font-size:11px;color:#667;margin:8px 0;">${fechaCorta}</div>`);
+      ultimaFecha = fechaCorta;
+    }
+    if (log.mensaje_cliente && !log.mensaje_cliente.startsWith("(")) {
+      bloques.push(`
+        <div class="burbuja-wrap user">
+          <div class="burbuja">${esc(log.mensaje_cliente)}</div>
+          <div class="meta-burbuja">${fmtHora(log.creado_en)}</div>
+        </div>
+      `);
+    }
+    const v = verificarInteraccion(log.hechos, log.respuesta);
+    const badgeId = `hechos-${log.id}`;
+    let badge, burbujaTexto, panelHechos;
+    if (v.ok === null) {
+      // Respuesta 100% automatica (sin IA): no hay hechos que auditar.
+      badge = `<span class="badge-mini" style="background:#e4e8ee;color:#556;cursor:default;">⚪ automática, sin IA</span>`;
+      burbujaTexto = esc(log.respuesta);
+      panelHechos = "";
+    } else {
+      badge = v.ok
+        ? `<span class="badge-mini ok" onclick="toggleHechos('${badgeId}')">✅ ${v.totalCitados} monto(s) verificados</span>`
+        : `<span class="badge-mini alerta" onclick="toggleHechos('${badgeId}')">⚠️ ${v.noEncontrados.length} sin respaldo</span>`;
+      burbujaTexto = resaltarMontos(log.respuesta, v.noEncontrados);
+      panelHechos = `<div class="hechos-panel" id="${badgeId}"><pre>${esc(JSON.stringify(log.hechos, null, 2))}</pre></div>`;
+    }
+    bloques.push(`
+      <div class="burbuja-wrap bot">
+        <div class="burbuja">${burbujaTexto}</div>
+        <div class="meta-burbuja">${fmtHora(log.creado_en)} ${badge}</div>
+        ${panelHechos}
+      </div>
+    `);
+  });
+  panel.innerHTML = bloques.join("");
+  panel.scrollTop = panel.scrollHeight;
+}
+
+function toggleHechos(id) {
+  document.getElementById(id).classList.toggle("abierto");
+}
+window.toggleHechos = toggleHechos;
+
+async function cargarChats() {
+  try {
+    const res = await fetch(`${API}/logs/interacciones?limit=300`);
+    const logs = await res.json();
+    CHATS = agruparPorConversacion(logs);
+    renderizarListaChats();
+    if (CHATS.length && chatActivoKey && CHATS.some((c) => c.key === chatActivoKey)) {
+      abrirChat(chatActivoKey); // refresca la conversacion abierta con mensajes nuevos
+    } else if (CHATS.length && !chatActivoKey) {
+      abrirChat(CHATS[0].key);
+    }
+  } catch (e) {
+    document.getElementById("listaChats").innerHTML = '<div class="cargando">No se pudo conectar al servidor.</div>';
+  }
+}
+
+cargarMetricasHeader();
+cargarChats();
+setInterval(() => { cargarMetricasHeader(); cargarChats(); }, 20000);
+</script>
+</body>
+</html>

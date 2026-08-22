@@ -7,6 +7,11 @@
 // Claude (llm.responderConversacion) junto con los hechos del recibo, el
 // glosario, el historial y, cuando corresponde, un beneficio destacado o
 // el detalle itemizado, para que entienda de verdad lo que se le pregunta.
+//
+// Registro de conversaciones: CADA turno que pasa por aca (haya usado
+// Claude o no) queda guardado via engine.registrarInteraccion, para que
+// el panel interno pueda mostrar el hilo completo de cada cliente, no
+// solo los mensajes donde intervino la IA.
 const engine = require("./engine");
 const nlg = require("./nlg");
 const llm = require("./llm");
@@ -93,7 +98,30 @@ function yaHuboCierreEfectivo(historial) {
   return false;
 }
 
-async function responder(cuenta, mensaje, recibo = null, linea = null, historial = [], canal = "web") {
+// Misma forma de "hechos" que arma llm.js internamente, para las
+// respuestas deterministicas (sin Claude) que igual tienen un diagnostico
+// detras (asesor, pagar, registrar consulta) -- asi el panel interno puede
+// auditarlas tambien, no solo las que redacta la IA.
+function hechosDesdeDiagnostico(diag) {
+  if (!diag) return null;
+  return diag.encontrado
+    ? {
+        primer_recibo: !diag.recibo_previo,
+        total_actual: diag.total_actual,
+        total_previo: diag.total_previo,
+        diferencia: diag.diferencia,
+        causas: diag.causas.map((c) => ({ tipo: c.tipo, monto: c.monto, detalle: c.detalle })),
+      }
+    : { error: diag.error || "No se encontró información de recibo." };
+}
+
+// Punto UNICO de registro de cada turno (haya pasado por Claude o no), para
+// que el panel interno muestre el hilo completo de la conversacion.
+function registrar(cuenta, canal, telefono, hechos, respuesta, mensajeUsuario) {
+  engine.registrarInteraccion(cuenta, canal, hechos, respuesta, mensajeUsuario, telefono).catch(() => {});
+}
+
+async function responder(cuenta, mensaje, recibo = null, linea = null, historial = [], canal = "web", telefono = null) {
   const texto = normalizar(mensaje);
 
   if (!cuenta) {
@@ -102,21 +130,27 @@ async function responder(cuenta, mensaje, recibo = null, linea = null, historial
 
   if (contieneAlguna(texto, PALABRAS_CAMBIAR_LINEA)) {
     const lineas = await engine.buscarCuenta(cuenta);
+    let respuesta;
     if (lineas && lineas.length > 1) {
       const listado = lineas.map((l) => `- **${l.etiqueta}** (línea •••${String(l.anexo).slice(-4)})`).join("\n");
-      return { respuesta: `Tu cuenta tiene estos servicios:\n\n${listado}\n\n¿Sobre cuál quieres consultar?`, acciones: [] };
+      respuesta = `Tu cuenta tiene estos servicios:\n\n${listado}\n\n¿Sobre cuál quieres consultar?`;
+    } else {
+      respuesta = "Tu cuenta tiene un solo servicio, así que ya estamos viendo el correcto. 🙂";
     }
-    return { respuesta: "Tu cuenta tiene un solo servicio, así que ya estamos viendo el correcto. 🙂", acciones: [] };
+    registrar(cuenta, canal, telefono, null, respuesta, mensaje);
+    return { respuesta, acciones: [] };
   }
 
   if (contieneAlguna(texto, PALABRAS_ASESOR)) {
     const diag = await engine.diagnosticar(cuenta, recibo, linea);
     const contexto = nlg.resumenParaAsesor(diag);
     engine.registrarSatisfaccion(cuenta, canal, "insatisfecho", "solicito hablar con un asesor").catch(() => {});
+    const respuesta =
+      "Listo, te conecto con un asesor y ya le compartí el contexto de tu consulta " +
+      "(tu recibo, el anterior, y la causa detectada) para que no tengas que repetir todo.";
+    registrar(cuenta, canal, telefono, hechosDesdeDiagnostico(diag), respuesta, mensaje);
     return {
-      respuesta:
-        "Listo, te conecto con un asesor y ya le compartí el contexto de tu consulta " +
-        "(tu recibo, el anterior, y la causa detectada) para que no tengas que repetir todo.",
+      respuesta,
       acciones: ["derivar_asesor"],
       contexto_asesor: contexto,
       satisfaccion: "insatisfecho",
@@ -125,13 +159,11 @@ async function responder(cuenta, mensaje, recibo = null, linea = null, historial
 
   if (contieneAlguna(texto, PALABRAS_PAGAR)) {
     const diag = await engine.diagnosticar(cuenta, recibo, linea);
-    if (diag.encontrado) {
-      return {
-        respuesta: `Tu monto a pagar de este ciclo es **${"S/ " + diag.total_actual.toFixed(2)}**. Puedes pagarlo desde esta misma App con Yape, Plin o tarjeta.`,
-        acciones: ["ir_a_pagar"],
-      };
-    }
-    return { respuesta: diag.error || "No encontré tu recibo para procesar el pago.", acciones: [] };
+    const respuesta = diag.encontrado
+      ? `Tu monto a pagar de este ciclo es **${"S/ " + diag.total_actual.toFixed(2)}**. Puedes pagarlo desde esta misma App con Yape, Plin o tarjeta.`
+      : diag.error || "No encontré tu recibo para procesar el pago.";
+    registrar(cuenta, canal, telefono, hechosDesdeDiagnostico(diag), respuesta, mensaje);
+    return { respuesta, acciones: diag.encontrado ? ["ir_a_pagar"] : [] };
   }
 
   // "Registrar la consulta": accion explicita de la ficha, junto a
@@ -140,10 +172,9 @@ async function responder(cuenta, mensaje, recibo = null, linea = null, historial
     const diag = await engine.diagnosticar(cuenta, recibo, linea);
     const resumen = nlg.resumenParaAsesor(diag);
     const folio = await engine.registrarConsulta(cuenta, canal, resumen);
-    return {
-      respuesta: `Listo, dejé registrada tu consulta con el folio **#${folio}**. Si más adelante hablas con un asesor, ya va a tener este contexto disponible sin que tengas que repetirlo.`,
-      acciones: [],
-    };
+    const respuesta = `Listo, dejé registrada tu consulta con el folio **#${folio}**. Si más adelante hablas con un asesor, ya va a tener este contexto disponible sin que tengas que repetirlo.`;
+    registrar(cuenta, canal, telefono, hechosDesdeDiagnostico(diag), respuesta, mensaje);
+    return { respuesta, acciones: [] };
   }
 
   // "Revisar el detalle": a diferencia de las causas (solo lo que VARIO),
@@ -151,11 +182,14 @@ async function responder(cuenta, mensaje, recibo = null, linea = null, historial
   if (contieneAlguna(texto, PALABRAS_DETALLE)) {
     const diag = await engine.diagnosticar(cuenta, recibo, linea);
     if (!diag.encontrado) {
-      return { respuesta: diag.error || "No encontré tu recibo para mostrarte el detalle.", acciones: [] };
+      const respuesta = diag.error || "No encontré tu recibo para mostrarte el detalle.";
+      registrar(cuenta, canal, telefono, hechosDesdeDiagnostico(diag), respuesta, mensaje);
+      return { respuesta, acciones: [] };
     }
     const detalle = await engine.detalleRecibo(cuenta, diag.recibo_actual, linea);
-    const textoResp = await llm.responderConversacion({ diag, historial, mensajeUsuario: mensaje, detalle });
-    return { respuesta: textoResp, acciones: ["pagar", "hablar_con_asesor"] };
+    const { texto: respuesta, hechos } = await llm.responderConversacion({ diag, historial, mensajeUsuario: mensaje, detalle });
+    registrar(cuenta, canal, telefono, hechos, respuesta, mensaje);
+    return { respuesta, acciones: ["pagar", "hablar_con_asesor"] };
   }
 
   // "Analizar el recibo actual y los recibos previos" (BrainyBill expone
@@ -164,14 +198,15 @@ async function responder(cuenta, mensaje, recibo = null, linea = null, historial
   if (contieneAlguna(texto, PALABRAS_RECIBOS_ANTERIORES)) {
     const historialRec = await engine.historialRecibos(cuenta, linea);
     const anteriores = historialRec.slice(1);
+    let respuesta;
     if (!anteriores.length) {
-      return { respuesta: "Este es tu único recibo registrado hasta ahora, todavía no hay anteriores con qué compararlo.", acciones: [] };
+      respuesta = "Este es tu único recibo registrado hasta ahora, todavía no hay anteriores con qué compararlo.";
+    } else {
+      const listado = anteriores.map((r, i) => `${i + 1}. ${formatearMes(r.fecha)} — S/ ${r.total.toFixed(2)}`).join("\n");
+      respuesta = `Estos son tus recibos anteriores:\n\n${listado}\n\n¿${MARCA_LISTADO_RECIBOS}? Dime el mes o el número de la lista.`;
     }
-    const listado = anteriores.map((r, i) => `${i + 1}. ${formatearMes(r.fecha)} — S/ ${r.total.toFixed(2)}`).join("\n");
-    return {
-      respuesta: `Estos son tus recibos anteriores:\n\n${listado}\n\n¿${MARCA_LISTADO_RECIBOS}? Dime el mes o el número de la lista.`,
-      acciones: [],
-    };
+    registrar(cuenta, canal, telefono, null, respuesta, mensaje);
+    return { respuesta, acciones: [] };
   }
 
   // Si el cliente nombra un mes puntual ("el de julio"), o si el bot acaba
@@ -187,8 +222,9 @@ async function responder(cuenta, mensaje, recibo = null, linea = null, historial
   }
   if (reciboReferido) {
     const diagHist = await engine.diagnosticar(cuenta, reciboReferido, linea);
-    const textoResp = await llm.responderConversacion({ diag: diagHist, historial, mensajeUsuario: mensaje });
-    return { respuesta: textoResp, acciones: diagHist.encontrado ? ["hablar_con_asesor"] : [] };
+    const { texto: respuesta, hechos } = await llm.responderConversacion({ diag: diagHist, historial, mensajeUsuario: mensaje });
+    registrar(cuenta, canal, telefono, hechos, respuesta, mensaje);
+    return { respuesta, acciones: diagHist.encontrado ? ["hablar_con_asesor"] : [] };
   }
 
   let satisfaccion;
@@ -209,7 +245,8 @@ async function responder(cuenta, mensaje, recibo = null, linea = null, historial
     engine.diagnosticar(cuenta, recibo, linea),
     mostrarBeneficio ? engine.buscarBeneficioDestacado(cuenta, linea) : Promise.resolve(null),
   ]);
-  const textoResp = await llm.responderConversacion({ diag, historial, mensajeUsuario: mensaje, beneficio: beneficioRaw });
+  const { texto: respuesta, hechos } = await llm.responderConversacion({ diag, historial, mensajeUsuario: mensaje, beneficio: beneficioRaw });
+  registrar(cuenta, canal, telefono, hechos, respuesta, mensaje);
 
   // Las "siguientes acciones" que pide la ficha (pagar, revisar detalle,
   // registrar la consulta, derivar a asesor) se ofrecen siempre que hay un
@@ -219,7 +256,7 @@ async function responder(cuenta, mensaje, recibo = null, linea = null, historial
     : [];
   if (diag.encontrado && diag.diferencia > 0.5) acciones.unshift("ver_detalle");
 
-  return { respuesta: textoResp, acciones, satisfaccion, beneficioMostrado: mostrarBeneficio && !!beneficioRaw };
+  return { respuesta, acciones, satisfaccion, beneficioMostrado: mostrarBeneficio && !!beneficioRaw };
 }
 
 module.exports = { responder };

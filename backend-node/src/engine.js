@@ -512,9 +512,46 @@ async function metricasSatisfaccion() {
   return { total, por_clasificacion: porClasificacion };
 }
 
+// Log de auditoria "0% alucinaciones" (dashboard interno, no lo ve el
+// cliente): guarda los hechos exactos que se le pasaron a Claude junto con
+// lo que respondio, para poder demostrar despues que nunca cito un monto
+// fuera de esos hechos. No bloqueante -- si falla el log, la respuesta al
+// cliente ya se envio de todos modos.
+async function registrarInteraccion(cuenta, canal, hechos, respuesta, mensajeCliente = null, telefono = null) {
+  try {
+    await pool.query(
+      "INSERT INTO interacciones_log (cuenta, canal, telefono, mensaje_cliente, hechos, respuesta) VALUES (?, ?, ?, ?, ?, ?)",
+      [cuenta || null, canal, telefono, mensajeCliente, JSON.stringify(hechos), respuesta]
+    );
+  } catch (e) {
+    console.error("No se pudo registrar interaccion:", e.message);
+  }
+}
+
+async function interaccionesRecientes(limit = 30) {
+  const n = Math.min(Math.max(Number(limit) || 30, 1), 500);
+  const [rows] = await pool.query(
+    `SELECT id, cuenta, canal, telefono, mensaje_cliente, hechos, respuesta, creado_en
+     FROM interacciones_log ORDER BY id DESC LIMIT ${n}`
+  );
+  return rows.map((r) => ({
+    id: r.id,
+    cuenta: r.cuenta,
+    canal: r.canal,
+    telefono: r.telefono,
+    mensaje_cliente: r.mensaje_cliente,
+    hechos: typeof r.hechos === "string" ? JSON.parse(r.hechos) : r.hechos,
+    respuesta: r.respuesta,
+    // creado_en viene del servidor en UTC -- se le agrega la 'Z' para que
+    // el navegador lo interprete correctamente y lo pueda convertir a la
+    // hora de Lima al mostrarlo (si no, JS lo toma como si ya fuera local).
+    creado_en: r.creado_en ? String(r.creado_en).replace(" ", "T") + "Z" : null,
+  }));
+}
+
 module.exports = {
   buscarCuenta, recibosDeCuenta, diagnosticar, buscarCasosDemo, LOB_LABELS,
   buscarBeneficioDestacado, registrarSatisfaccion, metricasSatisfaccion,
   historialRecibos, resolverReferenciaPorMes, resolverReferenciaPorPosicion,
-  detalleRecibo, registrarConsulta,
+  detalleRecibo, registrarConsulta, registrarInteraccion, interaccionesRecientes,
 };

@@ -82,14 +82,18 @@ function accionesDeDiagnostico(diag) {
   return acciones;
 }
 
-async function procesarIdentificacion(session, textoCrudo) {
+async function procesarIdentificacion(session, textoCrudo, waId) {
   const cuenta = textoCrudo.replace(/\D/g, "");
   if (!cuenta) {
-    return { respuesta: "Necesito tu número de cuenta (solo números) para poder ayudarte. ¿Me lo compartes?", acciones: [] };
+    const respuesta = "Necesito tu número de cuenta (solo números) para poder ayudarte. ¿Me lo compartes?";
+    engine.registrarInteraccion(null, "whatsapp", null, respuesta, textoCrudo, waId).catch(() => {});
+    return { respuesta, acciones: [] };
   }
   const lineas = await engine.buscarCuenta(cuenta);
   if (!lineas) {
-    return { respuesta: `No te encuentro como cliente Movistar con la cuenta *${cuenta}* 😕. ¿Puedes verificar el número?`, acciones: [] };
+    const respuesta = `No te encuentro como cliente Movistar con la cuenta *${cuenta}* 😕. ¿Puedes verificar el número?`;
+    engine.registrarInteraccion(cuenta, "whatsapp", null, respuesta, textoCrudo, waId).catch(() => {});
+    return { respuesta, acciones: [] };
   }
   session.cuenta = cuenta;
 
@@ -97,20 +101,21 @@ async function procesarIdentificacion(session, textoCrudo) {
     session.lineasPendientes = lineas;
     session.estado = ESTADOS.ESPERANDO_LINEA;
     const listado = lineas.map((l, i) => `${i + 1}. ${ICONOS_SERVICIO[l.etiqueta] || "📶"} ${l.etiqueta}`).join("\n");
-    return {
-      respuesta: `¡Perfecto! Tu cuenta tiene ${lineas.length} servicios:\n\n${listado}\n\n¿Sobre cuál quieres consultar? (responde con el número o el nombre)`,
-      acciones: [],
-    };
+    const respuesta = `¡Perfecto! Tu cuenta tiene ${lineas.length} servicios:\n\n${listado}\n\n¿Sobre cuál quieres consultar? (responde con el número o el nombre)`;
+    engine.registrarInteraccion(cuenta, "whatsapp", null, respuesta, textoCrudo, waId).catch(() => {});
+    return { respuesta, acciones: [] };
   }
 
   session.linea = lineas[0] ? lineas[0].anexo : null;
   session.estado = ESTADOS.LISTO;
   session.explicacionDada = true;
   const diag = await engine.diagnosticar(session.cuenta, null, session.linea);
-  return { respuesta: await llm.explicarVariacionLLM(diag), acciones: accionesDeDiagnostico(diag) };
+  const { texto: respuesta, hechos } = await llm.explicarVariacionLLM(diag);
+  engine.registrarInteraccion(cuenta, "whatsapp", hechos, respuesta, textoCrudo, waId).catch(() => {});
+  return { respuesta, acciones: accionesDeDiagnostico(diag) };
 }
 
-async function procesarSeleccionLinea(session, textoCrudo) {
+async function procesarSeleccionLinea(session, textoCrudo, waId) {
   const t = normalizar(textoCrudo);
   let elegida = null;
 
@@ -125,14 +130,18 @@ async function procesarSeleccionLinea(session, textoCrudo) {
   }
 
   if (!elegida) {
-    return { respuesta: "No identifiqué cuál elegiste 🤔. Responde con el número de la lista o el nombre del servicio.", acciones: [] };
+    const respuesta = "No identifiqué cuál elegiste 🤔. Responde con el número de la lista o el nombre del servicio.";
+    engine.registrarInteraccion(session.cuenta, "whatsapp", null, respuesta, textoCrudo, waId).catch(() => {});
+    return { respuesta, acciones: [] };
   }
 
   session.linea = elegida.anexo;
   session.estado = ESTADOS.LISTO;
   session.explicacionDada = true;
   const diag = await engine.diagnosticar(session.cuenta, null, session.linea);
-  return { respuesta: await llm.explicarVariacionLLM(diag), acciones: accionesDeDiagnostico(diag) };
+  const { texto: respuesta, hechos } = await llm.explicarVariacionLLM(diag);
+  engine.registrarInteraccion(session.cuenta, "whatsapp", hechos, respuesta, textoCrudo, waId).catch(() => {});
+  return { respuesta, acciones: accionesDeDiagnostico(diag) };
 }
 
 // Cuentas de las que se detecto inactividad y ya requieren el aviso de
@@ -186,8 +195,11 @@ async function manejarMensaje(waId, textoUsuario) {
   session.avisoInactividadEnviado = false;
 
   if (pareceReinicio(texto)) {
+    const cuentaPrevia = session.cuenta;
+    const respuesta = "¡Listo! Empecemos de nuevo 🙂 ¿Cuál es el número de cuenta que quieres consultar ahora?";
+    engine.registrarInteraccion(cuentaPrevia, "whatsapp", null, respuesta, texto, waId).catch(() => {});
     reiniciarSesion(waId);
-    return { respuesta: "¡Listo! Empecemos de nuevo 🙂 ¿Cuál es el número de cuenta que quieres consultar ahora?", acciones: [] };
+    return { respuesta, acciones: [] };
   }
 
   let respuesta;
@@ -202,17 +214,18 @@ async function manejarMensaje(waId, textoUsuario) {
       // opcion (ni recibo, ni contexto para un asesor) -- la cinta de
       // opciones aparece recien despues de identificarse.
       respuesta = await llm.responderOnboarding(texto);
+      engine.registrarInteraccion(null, "whatsapp", null, respuesta, texto, waId).catch(() => {});
     } else {
-      const r = await procesarIdentificacion(session, texto);
+      const r = await procesarIdentificacion(session, texto, waId);
       respuesta = r.respuesta;
       acciones = r.acciones;
     }
   } else if (session.estado === ESTADOS.ESPERANDO_LINEA) {
-    const r = await procesarSeleccionLinea(session, texto);
+    const r = await procesarSeleccionLinea(session, texto, waId);
     respuesta = r.respuesta;
     acciones = r.acciones;
   } else {
-    const resp = await assistant.responder(session.cuenta, texto, null, session.linea, session.historial, "whatsapp");
+    const resp = await assistant.responder(session.cuenta, texto, null, session.linea, session.historial, "whatsapp", waId);
     respuesta = resp.respuesta;
     acciones = resp.acciones || [];
     if (resp.satisfaccion) session.cerrado = true;

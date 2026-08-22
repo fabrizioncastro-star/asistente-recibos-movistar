@@ -86,6 +86,12 @@ app.get("/api/metricas/satisfaccion", async (req, res) => {
   res.json(await engine.metricasSatisfaccion());
 });
 
+// Log de auditoria interno (dashboard): hechos vs. respuesta de cada
+// interaccion con Claude, para demostrar 0% de alucinaciones financieras.
+app.get("/api/logs/interacciones", async (req, res) => {
+  res.json(await engine.interaccionesRecientes(req.query.limit));
+});
+
 const FRONTEND_DIR = path.join(__dirname, "..", "public");
 app.use(express.static(FRONTEND_DIR));
 

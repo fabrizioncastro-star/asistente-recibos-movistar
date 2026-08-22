@@ -165,3 +165,20 @@ CREATE TABLE IF NOT EXISTS satisfaccion_log (
   creado_en DATETIME DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_clasificacion (clasificacion)
 );
+
+-- Log de auditoria "0% alucinaciones": guarda, para cada respuesta de
+-- Claude, los HECHOS exactos que se le pasaron (ya calculados por
+-- engine.js) junto con el TEXTO que devolvio -- asi se puede demostrar
+-- despues, con datos reales, que nunca cito un monto que no viniera de
+-- los hechos. No se recrea en cada migracion para no perder historial.
+CREATE TABLE IF NOT EXISTS interacciones_log (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  cuenta VARCHAR(30),
+  canal VARCHAR(20),
+  telefono VARCHAR(20),
+  mensaje_cliente TEXT,
+  hechos JSON,
+  respuesta TEXT,
+  creado_en DATETIME DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_cuenta (cuenta)
+);
