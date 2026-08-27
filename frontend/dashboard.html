@@ -37,7 +37,7 @@
   .icono-svg { display: inline-block; vertical-align: middle; flex-shrink: 0; }
 
   header {
-    background: linear-gradient(135deg, var(--mov-navy), var(--mov-navy-2));
+    background: var(--mov-navy);
     color: white;
     padding: 12px 20px;
     display: flex;
@@ -48,29 +48,30 @@
     flex-shrink: 0;
     border-bottom: 3px solid var(--mov-blue);
   }
-  header h1 { margin: 0; font-size: 17px; font-weight: 800; letter-spacing: -.2px; }
+  header h1 { margin: 0; font-size: 21px; font-weight: 800; letter-spacing: -.2px; }
   header h1 span { color: var(--mov-blue); }
-  header .sub-marca { font-size: 11px; color: var(--mov-cyan); font-weight: 700; text-transform: uppercase; letter-spacing: .4px; margin-top: 1px; }
-  header .metricas { display: flex; gap: 16px; font-size: 12px; flex-wrap: wrap; }
-  header .metricas b { font-size: 14px; }
+  header .sub-marca { font-size: 13px; color: var(--mov-cyan); font-weight: 700; text-transform: uppercase; letter-spacing: .4px; margin-top: 1px; }
+  header .metricas { display: flex; gap: 18px; font-size: 14px; flex-wrap: wrap; }
+  header .metricas b { font-size: 16px; }
   header .metricas .item { opacity: .92; display: flex; align-items: center; gap: 5px; }
 
   .layout { flex: 1; display: flex; min-height: 0; }
 
   /* ---------- Sidebar de navegacion ---------- */
   .sidebar-nav {
-    width: 84px; flex-shrink: 0; background: var(--mov-navy);
-    display: flex; flex-direction: column; align-items: center; padding-top: 16px; gap: 6px;
+    width: 112px; flex-shrink: 0; background: var(--mov-navy);
+    display: flex; flex-direction: column; align-items: center; padding-top: 16px; gap: 8px;
   }
   .nav-item {
-    width: 64px; padding: 10px 4px; border-radius: 12px; color: rgba(255,255,255,.65);
-    text-align: center; font-size: 10.5px; font-weight: 600; cursor: pointer;
-    display: flex; flex-direction: column; align-items: center; gap: 5px; user-select: none;
+    width: 98px; padding: 12px 4px; border-radius: 12px; color: rgba(255,255,255,.65);
+    text-align: center; font-size: 12.5px; line-height: 1.25; font-weight: 600; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; gap: 6px; user-select: none;
+    overflow-wrap: break-word; word-break: break-word; hyphens: auto;
   }
   .nav-item:hover { background: rgba(255,255,255,.08); color: #fff; }
   .nav-item.activo { background: var(--mov-blue); color: #fff; }
   .nav-item .badge-conteo {
-    background: rgba(255,255,255,.25); border-radius: 999px; padding: 0 6px; font-size: 9.5px;
+    background: rgba(255,255,255,.25); border-radius: 999px; padding: 0 6px; font-size: 11px;
   }
 
   .vista { display: none; flex: 1; min-width: 0; }
@@ -78,44 +79,44 @@
 
   /* ---------- Vista: Conversaciones ---------- */
   .lista-chats {
-    width: 320px; flex-shrink: 0; background: white; border-right: 1px solid var(--mov-border);
+    width: 350px; flex-shrink: 0; background: white; border-right: 1px solid var(--mov-border);
     overflow-y: auto;
   }
   .lista-chats .titulo {
-    padding: 12px 16px; font-size: 12.5px; font-weight: 700; color: var(--mov-gray);
+    padding: 14px 16px; font-size: 14.5px; font-weight: 700; color: var(--mov-gray);
     text-transform: uppercase; letter-spacing: .3px; border-bottom: 1px solid var(--mov-border);
     position: sticky; top: 0; background: white;
   }
   .chat-row {
-    display: flex; gap: 10px; padding: 11px 16px; cursor: pointer; border-bottom: 1px solid #f0f2f5;
+    display: flex; gap: 10px; padding: 13px 16px; cursor: pointer; border-bottom: 1px solid #f0f2f5;
     align-items: center;
   }
   .chat-row:hover { background: var(--mov-gray-light); }
   .chat-row.activo { background: #e3f4ff; }
   .avatar {
-    width: 42px; height: 42px; border-radius: 50%; background: var(--mov-blue-dark); color: white;
-    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px;
+    width: 46px; height: 46px; border-radius: 50%; background: var(--mov-blue-dark); color: white;
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px;
     flex-shrink: 0;
   }
   .chat-row .info { min-width: 0; flex: 1; }
   .chat-row .top-line { display: flex; justify-content: space-between; gap: 6px; }
-  .chat-row .contacto { font-weight: 700; font-size: 13.5px; color: var(--mov-black); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .chat-row .hora { font-size: 11px; color: #889; flex-shrink: 0; }
-  .chat-row .previa { font-size: 12.5px; color: #667; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
-  .chat-row .sub { font-size: 11px; color: #99a; }
+  .chat-row .contacto { font-weight: 700; font-size: 15.5px; color: var(--mov-black); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chat-row .hora { font-size: 13px; color: #889; flex-shrink: 0; }
+  .chat-row .previa { font-size: 14px; color: #667; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 3px; }
+  .chat-row .sub { font-size: 13px; color: #99a; margin-top: 2px; }
   .canal-pill {
-    font-size: 9.5px; text-transform: uppercase; font-weight: 700; padding: 1px 6px; border-radius: 999px;
+    font-size: 11px; text-transform: uppercase; font-weight: 700; padding: 1px 7px; border-radius: 999px;
     background: #e4e8ee; color: #556; margin-left: 6px;
   }
   .canal-pill.whatsapp { background: #d7f5e3; color: #1fae5c; }
 
   .conversacion { flex: 1; display: flex; flex-direction: column; min-width: 0; }
   .conversacion .cabecera {
-    background: white; border-bottom: 1px solid var(--mov-border); padding: 12px 20px;
+    background: white; border-bottom: 1px solid var(--mov-border); padding: 14px 20px;
     display: flex; align-items: center; gap: 10px; flex-shrink: 0;
   }
-  .conversacion .cabecera .nombre { font-weight: 700; font-size: 14.5px; color: var(--mov-navy); }
-  .conversacion .cabecera .sub { font-size: 11.5px; color: #889; }
+  .conversacion .cabecera .nombre { font-weight: 700; font-size: 17px; color: var(--mov-navy); }
+  .conversacion .cabecera .sub { font-size: 13.5px; color: #889; }
 
   .mensajes {
     flex: 1; overflow-y: auto; padding: 18px 22px; background: var(--chat-fondo);
@@ -125,80 +126,219 @@
   .burbuja-wrap.user { align-items: flex-end; }
   .burbuja-wrap.bot { align-items: flex-start; }
   .burbuja {
-    max-width: 62%; padding: 8px 12px; border-radius: 10px; font-size: 13.5px; line-height: 1.45;
+    max-width: 66%; padding: 10px 14px; border-radius: 10px; font-size: 15.5px; line-height: 1.5;
     white-space: pre-wrap; word-break: break-word; box-shadow: 0 1px 1px rgba(0,0,0,.08);
   }
   .burbuja-wrap.user .burbuja { background: var(--mov-blue); color: white; border-top-right-radius: 2px; }
   .burbuja-wrap.bot .burbuja { background: white; border-top-left-radius: 2px; }
   .burbuja mark { background: #fff3b0; border-radius: 3px; padding: 0 2px; color: #1a1a1a; }
   .burbuja mark.no-verificado { background: var(--rojo-bg); color: var(--rojo); }
-  .meta-burbuja { font-size: 10.5px; color: #99a; margin-top: 2px; display: flex; align-items: center; gap: 6px; }
-  .meta-burbuja .badge-mini { font-weight: 700; padding: 2px 8px; border-radius: 999px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+  .meta-burbuja { font-size: 12.5px; color: #99a; margin-top: 3px; display: flex; align-items: center; gap: 6px; }
+  .meta-burbuja .badge-mini { font-weight: 700; padding: 3px 9px; border-radius: 999px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
   .meta-burbuja .badge-mini.ok { background: var(--verde-bg); color: var(--verde); }
   .meta-burbuja .badge-mini.alerta { background: var(--rojo-bg); color: var(--rojo); }
   .meta-burbuja .badge-mini.neutro { background: #e4e8ee; color: #556; cursor: default; }
   .hechos-panel {
-    max-width: 62%; margin-top: 4px; background: #fbfbfc; border: 1px dashed var(--mov-border);
+    max-width: 66%; margin-top: 4px; background: #fbfbfc; border: 1px dashed var(--mov-border);
     border-radius: 8px; padding: 8px 10px; display: none;
   }
   .hechos-panel.abierto { display: block; }
-  .hechos-panel pre { margin: 0; font-size: 11px; white-space: pre-wrap; word-break: break-word; }
+  .hechos-panel pre { margin: 0; font-size: 12.5px; white-space: pre-wrap; word-break: break-word; }
 
-  .estado-vacio { margin: auto; text-align: center; color: #889; font-size: 13.5px; }
-  .cargando { color: #889; font-size: 13px; padding: 30px; text-align: center; }
+  .estado-vacio { margin: auto; text-align: center; color: #889; font-size: 15.5px; }
+  .cargando { color: #889; font-size: 15px; padding: 30px; text-align: center; }
 
   /* ---------- Vistas: Satisfaccion / Agentes (paneles con scroll) ---------- */
   .panel-scroll { flex: 1; overflow-y: auto; padding: 26px 30px; }
-  .panel-scroll h2 { margin: 0 0 4px; font-size: 19px; color: var(--mov-navy); }
-  .panel-scroll .subtitulo { margin: 0 0 20px; font-size: 12.5px; color: #778; }
+  .panel-scroll h2 { margin: 0 0 4px; font-size: 24px; color: var(--mov-navy); }
+  .panel-scroll .subtitulo { margin: 0 0 20px; font-size: 14.5px; color: #778; }
 
-  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 26px; }
-  .stat-card { background: white; border: 1px solid var(--mov-border); border-radius: 14px; padding: 16px 18px; }
-  .stat-card .valor { font-size: 26px; font-weight: 800; color: var(--mov-navy); }
-  .stat-card .etiqueta { font-size: 12px; color: #778; margin-top: 4px; display: flex; align-items: center; gap: 5px; }
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 26px; }
+  .stat-card { background: white; border: 1px solid var(--mov-border); border-radius: 14px; padding: 18px 20px; }
+  .stat-card .valor { font-size: 30px; font-weight: 800; color: var(--mov-navy); }
+  .stat-card .etiqueta { font-size: 14px; color: #778; margin-top: 5px; display: flex; align-items: center; gap: 6px; }
   .stat-card.ok .valor { color: var(--verde); }
   .stat-card.alerta .valor { color: var(--rojo); }
   .stat-card.neutro .valor { color: var(--amarillo); }
 
-  .card-panel { background: white; border: 1px solid var(--mov-border); border-radius: 14px; padding: 18px 20px; margin-bottom: 20px; }
-  .card-panel h3 { margin: 0 0 14px; font-size: 14px; color: var(--mov-navy); display: flex; align-items: center; gap: 7px; }
+  .card-panel { background: white; border: 1px solid var(--mov-border); border-radius: 14px; padding: 20px 22px; margin-bottom: 20px; }
+  .card-panel h3 { margin: 0 0 16px; font-size: 16.5px; color: var(--mov-navy); display: flex; align-items: center; gap: 8px; }
 
-  .barra-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 12.5px; }
-  .barra-row .label { width: 140px; flex-shrink: 0; color: #556; display: flex; align-items: center; gap: 6px; }
-  .barra-row .pista { flex: 1; background: var(--mov-gray-light); border-radius: 999px; height: 14px; overflow: hidden; }
-  .barra-row .relleno { height: 100%; background: linear-gradient(90deg, var(--mov-blue-dark), var(--mov-cyan)); border-radius: 999px; }
-  .barra-row .cuenta { width: 34px; text-align: right; color: #778; flex-shrink: 0; }
+  .agentes-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; margin-bottom: 26px; }
+  .agente-card { background: white; border: 1px solid var(--mov-border); border-radius: 14px; padding: 18px; display: flex; gap: 14px; align-items: center; }
+  .agente-card .avatar-agente { width: 56px; height: 56px; border-radius: 50%; background: var(--mov-blue); color: white; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .agente-card .nombre-agente { font-weight: 700; font-size: 16px; color: var(--mov-black); }
+  .agente-card .area-agente { font-size: 14px; color: #778; margin-top: 3px; }
+  .agente-card .estado-agente { margin-top: 7px; font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--verde); display: flex; align-items: center; gap: 5px; }
+  .estado-agente .punto { width: 8px; height: 8px; border-radius: 50%; background: var(--verde); display: inline-block; }
 
-  .agentes-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 26px; }
-  .agente-card { background: white; border: 1px solid var(--mov-border); border-radius: 14px; padding: 16px; display: flex; gap: 12px; align-items: center; }
-  .agente-card .avatar-agente { width: 52px; height: 52px; border-radius: 50%; background: var(--mov-blue); color: white; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-  .agente-card .nombre-agente { font-weight: 700; font-size: 14px; color: var(--mov-black); }
-  .agente-card .area-agente { font-size: 12px; color: #778; margin-top: 2px; }
-  .agente-card .estado-agente { margin-top: 6px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; color: var(--verde); display: flex; align-items: center; gap: 4px; }
-  .estado-agente .punto { width: 7px; height: 7px; border-radius: 50%; background: var(--verde); display: inline-block; }
-
-  .derivacion-row { display: flex; gap: 12px; padding: 12px 4px; border-bottom: 1px solid #f0f2f5; align-items: flex-start; }
-  .derivacion-row .avatar-agente { width: 38px; height: 38px; border-radius: 50%; background: var(--mov-blue); color: white; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .derivacion-row { display: flex; gap: 12px; padding: 14px 4px; border-bottom: 1px solid #f0f2f5; align-items: center; flex-wrap: wrap; }
+  .derivacion-row .avatar-agente { width: 40px; height: 40px; border-radius: 50%; background: var(--mov-blue); color: white; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .derivacion-row .info { min-width: 0; flex: 1; }
   .derivacion-row .top-line { display: flex; justify-content: space-between; gap: 8px; }
-  .derivacion-row .titulo-fila { font-size: 13px; font-weight: 700; color: var(--mov-black); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-  .derivacion-row .hora { font-size: 11px; color: #99a; flex-shrink: 0; }
-  .derivacion-row .contexto { font-size: 12px; color: #667; margin-top: 2px; }
+  .derivacion-row .titulo-fila { font-size: 15px; font-weight: 700; color: var(--mov-black); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .derivacion-row .hora { font-size: 13px; color: #99a; flex-shrink: 0; }
+  .derivacion-row .contexto { font-size: 14px; color: #667; margin-top: 3px; }
+
+  .derivaciones-agente { margin-bottom: 22px; }
+  .derivaciones-agente:last-child { margin-bottom: 0; }
+  .derivaciones-agente-cabecera {
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px; margin-bottom: 4px;
+    background: var(--mov-gray-light); border-radius: 10px;
+  }
+  .derivaciones-agente-cabecera .avatar-emoji-mini { font-size: 20px; line-height: 1; }
+  .derivaciones-agente-cabecera .nombre-agente-mini { font-weight: 700; font-size: 15px; color: var(--mov-navy); }
+  .derivaciones-agente-cabecera .area-agente-mini { font-size: 13px; color: #778; }
+  .derivaciones-agente-cabecera .conteo-derivaciones {
+    margin-left: auto; font-size: 12.5px; font-weight: 700; color: white; background: var(--mov-blue);
+    border-radius: 999px; padding: 2px 10px;
+  }
+  .derivaciones-agente .derivacion-row:last-child { border-bottom: none; }
+
+  /* ---------- Tabla de calificaciones por cliente ---------- */
+  .filtro-dias { margin-bottom: 16px; }
+  .filtro-controles { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  /* ---------- Calendario personalizado del filtro de calificaciones ---------- */
+  .calendario-wrap { position: relative; }
+  .btn-calendario {
+    display: inline-flex; align-items: center; gap: 8px; font-size: 14.5px; font-weight: 600;
+    padding: 9px 16px; border-radius: 999px; border: 1.5px solid var(--mov-border);
+    background: white; color: var(--mov-navy); font-family: inherit; cursor: pointer;
+  }
+  .btn-calendario:hover { border-color: var(--mov-blue); }
+  .btn-calendario svg { color: var(--mov-blue); flex-shrink: 0; }
+  .calendario-pop {
+    display: none; position: absolute; top: calc(100% + 8px); left: 0; z-index: 20;
+    background: white; border: 1px solid var(--mov-border); border-radius: 14px;
+    box-shadow: 0 10px 30px rgba(10,22,40,.16); padding: 14px; width: 264px;
+  }
+  .calendario-pop.abierto { display: block; }
+  .calendario-cabecera { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; gap: 4px; }
+  .calendario-titulo-btn {
+    font-size: 14.5px; font-weight: 700; color: var(--mov-navy); text-transform: capitalize;
+    border: none; background: transparent; cursor: pointer; padding: 4px 8px; border-radius: 8px;
+  }
+  .calendario-titulo-btn:hover { background: var(--mov-gray-light); color: var(--mov-blue); }
+  .calendario-nav {
+    width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--mov-border); background: white;
+    color: var(--mov-blue); font-size: 16px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .calendario-nav:hover { background: var(--mov-gray-light); border-color: var(--mov-blue); }
+  .calendario-dias-semana { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 11.5px; font-weight: 700; color: #99a; margin-bottom: 4px; }
+  .calendario-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+  .calendario-grid.vista-meses, .calendario-grid.vista-anios { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .calendario-dia {
+    position: relative; aspect-ratio: 1; border: none; background: transparent; border-radius: 8px;
+    font-size: 13.5px; font-weight: 600; color: var(--mov-black); cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .calendario-dia:hover { background: var(--mov-gray-light); }
+  .calendario-dia.hoy { border: 1.5px solid var(--mov-blue); }
+  .calendario-dia.seleccionado { background: var(--mov-blue); color: white; }
+  .calendario-dia.en-rango { background: var(--mov-gray-light); border-radius: 0; }
+  .calendario-dia.tiene-datos::after {
+    content: ""; position: absolute; bottom: 3px; width: 4px; height: 4px; border-radius: 50%; background: var(--mov-cyan);
+  }
+  .calendario-dia.seleccionado.tiene-datos::after { background: white; }
+  .calendario-dia.vacio { cursor: default; visibility: hidden; }
+  .calendario-celda-grande { aspect-ratio: auto; padding: 12px 4px; font-size: 13.5px; text-transform: capitalize; }
+  .calendario-acciones { display: flex; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--mov-border); flex-wrap: wrap; }
+  .calendario-accion {
+    flex: 1; font-size: 12.5px; font-weight: 600; padding: 7px 8px; border-radius: 8px;
+    border: 1px solid var(--mov-border); background: white; color: var(--mov-blue-dark); cursor: pointer; min-width: 90px;
+  }
+  .calendario-accion:hover { background: var(--mov-gray-light); border-color: var(--mov-blue); }
+  .calendario-accion.activo { background: var(--mov-blue); border-color: var(--mov-blue); color: white; }
+  .calendario-hint { font-size: 12px; color: var(--mov-blue-dark); background: var(--mov-gray-light); border-radius: 8px; padding: 6px 10px; margin-top: 8px; text-align: center; }
+
+  /* ---------- Grafico de dona (problema mas repetido) ---------- */
+  .donut-wrap { display: flex; gap: 28px; align-items: center; flex-wrap: wrap; }
+  .donut-svg-wrap { width: 240px; height: 240px; position: relative; flex-shrink: 0; }
+  .donut-svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .donut-gajo { cursor: pointer; transition: opacity .15s, filter .15s; }
+  .donut-gajo:hover { filter: brightness(1.12); }
+  .donut-hueco {
+    position: absolute; inset: 32px; border-radius: 50%; background: white;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none;
+  }
+  .donut-hueco .donut-total { font-size: 34px; font-weight: 800; color: var(--mov-navy); line-height: 1; }
+  .donut-hueco .donut-total-etiqueta { font-size: 12.5px; color: #99a; margin-top: 4px; text-align: center; }
+  .donut-tooltip {
+    position: fixed; z-index: 200; background: var(--mov-navy); color: white; font-size: 12.5px;
+    padding: 8px 12px; border-radius: 8px; pointer-events: none; opacity: 0; transition: opacity .1s;
+    box-shadow: 0 6px 18px rgba(10,22,40,.25); line-height: 1.5; white-space: nowrap;
+  }
+  .donut-tooltip b { font-size: 13px; }
+  .donut-leyenda { display: flex; flex-direction: column; gap: 4px; flex: 1 1 220px; min-width: 200px; }
+  .donut-leyenda-item {
+    display: flex; align-items: center; gap: 9px; cursor: pointer; padding: 7px 10px; border-radius: 8px;
+    font-size: 14px; color: var(--mov-black); border: none; background: transparent; width: 100%; text-align: left; font-family: inherit;
+  }
+  .donut-leyenda-item:hover { background: var(--mov-gray-light); }
+  .donut-leyenda-item.activo { background: var(--mov-gray-light); font-weight: 700; }
+  .donut-leyenda-item.apagado { opacity: .4; }
+  .donut-leyenda-todos { color: var(--mov-blue-dark); border-bottom: 1px solid var(--mov-border); margin-bottom: 4px; padding-bottom: 11px; }
+  .donut-swatch { width: 12px; height: 12px; border-radius: 4px; flex-shrink: 0; }
+  .donut-leyenda-item .donut-total-mini { margin-left: auto; font-weight: 700; color: var(--mov-navy); }
+  .btn-limpiar-filtro {
+    font-size: 13.5px; font-weight: 600; padding: 8px 14px; border-radius: 10px;
+    border: 1px solid var(--mov-border); background: white; color: #556; cursor: pointer;
+  }
+  .btn-limpiar-filtro:hover { background: var(--mov-gray-light); border-color: var(--mov-blue); }
+  .input-buscar {
+    font-size: 14.5px; padding: 9px 16px; border-radius: 999px; border: 1.5px solid var(--mov-border);
+    background: white; color: var(--mov-black); font-family: inherit; min-width: 220px; flex: 1 1 220px;
+  }
+  .input-buscar:focus { outline: none; border-color: var(--mov-blue); box-shadow: 0 0 0 3px rgba(1,157,244,.15); }
+  .resumen-filtro { font-size: 15px; color: #556; margin-bottom: 14px; margin-top: 14px; }
+  .resumen-filtro b { font-size: 21px; color: var(--mov-navy); }
+  .calif-row { display: flex; gap: 12px; padding: 14px 4px; border-bottom: 1px solid #f0f2f5; align-items: center; flex-wrap: wrap; }
+  .calif-row .info { min-width: 0; flex: 1; }
+  .calif-row .top-line { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .calif-row .contacto-fila { font-size: 15px; font-weight: 700; color: var(--mov-black); }
+  .calif-row .sub-fila { font-size: 13px; color: #99a; margin-top: 3px; }
+  .calif-row .observacion { font-size: 14px; color: #556; margin-top: 7px; background: var(--mov-gray-light); border-radius: 8px; padding: 8px 12px; display: flex; align-items: flex-start; gap: 6px; }
+  .nota-badge { font-weight: 800; padding: 4px 13px; border-radius: 999px; font-size: 15px; flex-shrink: 0; }
+  .nota-badge.ok { background: var(--verde-bg); color: var(--verde); }
+  .nota-badge.neutro { background: var(--amarillo-bg); color: var(--amarillo); }
+  .nota-badge.alerta { background: var(--rojo-bg); color: var(--rojo); }
+  .nota-badge.sin-calificar { background: var(--mov-gray-light); color: #99a; }
+  .btn-ver-conv {
+    border: 1px solid var(--mov-border); background: white; color: var(--mov-blue-dark);
+    border-radius: 8px; padding: 7px 14px; font-size: 13.5px; font-weight: 600; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
+  }
+  .btn-ver-conv:hover { background: var(--mov-gray-light); border-color: var(--mov-blue); }
 
   /* ---------- Vista: Analitica ---------- */
   .card-panel.centrado { text-align: center; }
-  .pct-grande { font-size: 44px; font-weight: 800; line-height: 1; }
+  .pct-grande { font-size: 52px; font-weight: 800; line-height: 1; }
   .pct-grande.ok { color: var(--verde); }
   .pct-grande.alerta { color: var(--rojo); }
 
-  .chart-dias { display: flex; align-items: flex-end; gap: 10px; min-height: 150px; padding: 10px 4px 0; overflow-x: auto; }
-  .chart-dias .barra-dia { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 34px; }
-  .chart-dias .barra-dia .valor-num { font-size: 11.5px; font-weight: 700; color: var(--mov-navy); }
-  .chart-dias .barra-dia .valor-barra { width: 26px; background: linear-gradient(180deg, var(--mov-cyan), var(--mov-blue-dark)); border-radius: 6px 6px 3px 3px; }
-  .chart-dias .barra-dia .etiqueta-dia { font-size: 10px; color: #778; white-space: nowrap; }
+  .chart-dias { display: flex; align-items: flex-end; gap: 12px; min-height: 200px; padding: 10px 4px 0; overflow-x: auto; }
+  .chart-dias .barra-dia { display: flex; flex-direction: column; align-items: center; gap: 7px; min-width: 40px; cursor: pointer; }
+  .chart-dias .barra-dia .valor-num { font-size: 13.5px; font-weight: 700; color: var(--mov-navy); }
+  .chart-dias .barra-dia .valor-barra {
+    width: 30px; background: var(--mov-blue); border-radius: 6px 6px 3px 3px;
+    transition: height .55s cubic-bezier(.22,1,.36,1);
+  }
+  .chart-dias .barra-dia .etiqueta-dia { font-size: 12px; color: #778; white-space: nowrap; }
+  .chart-dias .barra-dia:hover .valor-barra { filter: brightness(1.1); }
 
-  .estrella-svg { color: var(--amarillo); }
-  .estrella-svg.vacia { color: #d8dde5; }
+  /* ---------- Vista Satisfaccion: filtro + tabla a la izquierda, grafico a la derecha ---------- */
+  .calif-split { display: flex; gap: 26px; align-items: flex-start; flex-wrap: wrap; }
+  .calif-split-izq { flex: 1 1 380px; min-width: 320px; }
+  .calif-split-der {
+    flex: 0 0 300px; width: 300px; position: sticky; top: 0;
+    border-left: 1px solid var(--mov-border); padding-left: 24px;
+  }
+  .calif-split-der h4 { margin: 0 0 4px; font-size: 15.5px; color: var(--mov-navy); display: flex; align-items: center; gap: 7px; }
+  .nota-chart-dias { margin: 0 0 10px; font-size: 12.5px; color: #99a; }
+  .tabla-calif-scroll { max-height: 620px; overflow-y: auto; padding-right: 4px; }
+  @media (max-width: 900px) {
+    .calif-split-der { border-left: none; border-top: 1px solid var(--mov-border); padding-left: 0; padding-top: 20px; width: 100%; flex-basis: 100%; }
+  }
+
 </style>
 </head>
 <body>
@@ -250,14 +390,32 @@
   <div class="vista" id="vista-satisfaccion">
     <div class="panel-scroll">
       <h2>Satisfacción</h2>
-      <p class="subtitulo">Clasificación inferida por palabras clave + calificación explícita 1-5 pedida al cerrar la conversación.</p>
-      <div class="stat-grid" id="statGridSatisfaccion">
-        <div class="stat-card"><div class="valor">…</div><div class="etiqueta">Cargando</div></div>
-      </div>
+      <p class="subtitulo">Calificación explícita 1-10 pedida al cerrar la conversación (estilo NPS: promotor 9-10, pasivo 7-8, detractor 1-6).</p>
+
       <div class="card-panel">
-        <h3 data-icon="star">Calificación del cliente (1 a 5)</h3>
+        <h3 data-icon="star">Calificación del cliente (1 a 10) — resumen general</h3>
         <div id="califResumen" style="margin-bottom:14px; font-size:13px; color:#556;">Cargando…</div>
-        <div id="califBarras"></div>
+        <div class="stat-grid" id="statGridNps" style="margin-bottom:0;"></div>
+      </div>
+
+      <div class="card-panel">
+        <h3 data-icon="users">Calificaciones por cliente</h3>
+        <div class="calif-split">
+          <div class="calif-split-izq">
+            <div class="filtro-dias">
+              <div class="filtro-controles" id="filtroCalifControles">
+                <input type="text" id="buscarClienteCalif" class="input-buscar" placeholder="Buscar por teléfono o cuenta…" oninput="aplicarBusquedaCalif()">
+              </div>
+            </div>
+            <div class="resumen-filtro" id="resumenFiltroCalif"></div>
+            <div id="tablaCalificaciones" class="tabla-calif-scroll"><div class="cargando">Cargando…</div></div>
+          </div>
+          <div class="calif-split-der">
+            <h4 data-icon="barChart">Calificación por mes</h4>
+            <p class="nota-chart-dias">Se ajusta automáticamente al filtro de la izquierda.</p>
+            <div class="chart-dias" id="chartCalifDia"></div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -279,13 +437,19 @@
   <div class="vista" id="vista-analitica">
     <div class="panel-scroll">
       <h2>Analítica</h2>
-      <p class="subtitulo">Confiabilidad de la IA, demanda por día, problema más repetido y alcance del Efecto Efervescente.</p>
+      <p class="subtitulo">Confiabilidad de la IA, problema más repetido, demanda por día y alcance del Efecto Efervescente.</p>
 
       <div class="card-panel centrado">
         <h3 style="text-align:left;" data-icon="shieldCheck">Confiabilidad de la IA (meta: 0% alucinaciones)</h3>
         <div class="pct-grande" id="pctAlucinaciones">…</div>
         <div class="subtitulo" id="detalleAlucinaciones" style="margin:6px 0 0;"></div>
         <div id="listaFlagueadas" style="text-align:left; margin-top:10px;"></div>
+      </div>
+
+      <div class="card-panel">
+        <h3 data-icon="trendingUp">Problema más repetido</h3>
+        <p class="subtitulo" style="margin-bottom:14px;">Vinculado al filtro de fecha de "Clientes atendidos por día" (más abajo). Haz clic en un problema para aislarlo.</p>
+        <div class="donut-wrap" id="donutProblemas"></div>
       </div>
 
       <div class="stat-grid">
@@ -295,12 +459,11 @@
 
       <div class="card-panel">
         <h3 data-icon="users">Clientes atendidos por día</h3>
+        <div class="filtro-dias">
+          <div class="filtro-controles" id="filtroAnaliticaControles"></div>
+        </div>
+        <div class="resumen-filtro" id="resumenFiltroAnalitica"></div>
         <div class="chart-dias" id="chartClientesDia"></div>
-      </div>
-
-      <div class="card-panel">
-        <h3 data-icon="trendingUp">Problema más repetido</h3>
-        <div id="problemasBarras"></div>
       </div>
     </div>
   </div>
@@ -343,19 +506,14 @@ const ICONOS_PATHS = {
   fileText: '<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" /><path d="M14 2v5a1 1 0 0 0 1 1h5" /><path d="M10 9H8" /><path d="M16 13H8" /><path d="M16 17H8" />',
 };
 function icono(nombre, size, cls) {
-  size = size || 16; cls = cls || "";
+  size = size || 18; cls = cls || "";
   return `<svg class="icono-svg ${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONOS_PATHS[nombre] || ""}</svg>`;
-}
-function estrellaSvg(llena, size) {
-  size = size || 15;
-  const relleno = llena ? "currentColor" : "none";
-  return `<svg class="icono-svg estrella-svg ${llena ? "" : "vacia"}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="${relleno}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONOS_PATHS.star}</svg>`;
 }
 // Reemplaza los placeholders data-icon="nombre" del HTML estatico por el SVG real.
 function pintarIconosEstaticos() {
   document.querySelectorAll("[data-icon]").forEach((el) => {
     const nombre = el.dataset.icon;
-    el.insertAdjacentHTML("afterbegin", icono(nombre, 18) + " ");
+    el.insertAdjacentHTML("afterbegin", icono(nombre, 20) + " ");
   });
 }
 
@@ -368,6 +526,13 @@ function fmtHora(iso) {
 function fmtFechaCorta(iso) {
   const d = new Date(iso);
   return d.toLocaleString("es-PE", { day: "2-digit", month: "short", timeZone: "America/Lima" });
+}
+// YYYY-MM-DD en hora de Lima (en-CA da ese formato directo) -- para poder
+// comparar contra los "dia" que devuelve /calificaciones/dias, que agrupa
+// tambien en hora de Lima (ver CONVERT_TZ en engine.js).
+function fmtFechaISO(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString("en-CA", { timeZone: "America/Lima" });
 }
 function fmtFechaHora(iso) {
   const d = new Date(iso);
@@ -431,61 +596,505 @@ async function cargarMetricasHeader() {
     const porClas = {};
     (data.por_clasificacion || []).forEach((r) => { porClas[r.clasificacion] = r.total; });
     el.innerHTML = `
-      <span class="item">${icono("fileText", 13)} <b>${data.total}</b> registradas</span>
-      <span class="item">${icono("checkCircle", 13)} <b>${porClas.conforme || 0}</b> conformes</span>
-      <span class="item">${icono("alertTriangle", 13)} <b>${porClas.insatisfecho || 0}</b> insatisfechos</span>
-      <span class="item">${icono("clock", 13)} <b>${porClas.silencio || 0}</b> por silencio</span>
-      <span class="item">${icono("fileText", 13)} <b>${porClas.consulta_registrada || 0}</b> consultas registradas</span>
+      <span class="item">${icono("fileText", 15)} <b>${data.total}</b> registradas</span>
+      <span class="item">${icono("checkCircle", 15)} <b>${porClas.conforme || 0}</b> conformes</span>
+      <span class="item">${icono("alertTriangle", 15)} <b>${porClas.insatisfecho || 0}</b> insatisfechos</span>
+      <span class="item">${icono("clock", 15)} <b>${porClas.silencio || 0}</b> por silencio</span>
+      <span class="item">${icono("fileText", 15)} <b>${porClas.consulta_registrada || 0}</b> consultas registradas</span>
     `;
-    renderizarStatGridSatisfaccion(data, porClas);
   } catch (e) {
     el.innerHTML = '<span class="item">No se pudieron cargar las métricas.</span>';
   }
 }
 
-function renderizarStatGridSatisfaccion(data, porClas) {
-  const el = document.getElementById("statGridSatisfaccion");
-  if (!el) return;
-  el.innerHTML = `
-    <div class="stat-card"><div class="valor">${data.total}</div><div class="etiqueta">Interacciones registradas</div></div>
-    <div class="stat-card ok"><div class="valor">${porClas.conforme || 0}</div><div class="etiqueta">${icono("checkCircle", 14)} Conformes</div></div>
-    <div class="stat-card alerta"><div class="valor">${porClas.insatisfecho || 0}</div><div class="etiqueta">${icono("alertTriangle", 14)} Insatisfechos</div></div>
-    <div class="stat-card neutro"><div class="valor">${porClas.silencio || 0}</div><div class="etiqueta">${icono("clock", 14)} Cierre por silencio</div></div>
-    <div class="stat-card"><div class="valor">${porClas.consulta_registrada || 0}</div><div class="etiqueta">${icono("fileText", 14)} Consultas registradas</div></div>
-  `;
+// ---------- Calificacion 1-10 (estilo NPS) ----------
+function claseNpsColor(nps) {
+  return nps === "promotor" ? "ok" : nps === "pasivo" ? "neutro" : "alerta";
 }
 
-// ---------- Calificacion 1-5 ----------
-async function cargarMetricasCalificacion() {
-  const resumenEl = document.getElementById("califResumen");
-  const barrasEl = document.getElementById("califBarras");
-  try {
-    const res = await fetch(`${API}/metricas/calificaciones`);
-    const data = await res.json();
-    if (!data.total) {
-      resumenEl.innerHTML = "Todavía no hay calificaciones registradas. Se piden automáticamente cuando el bot cierra una conversación.";
-      barrasEl.innerHTML = "";
+const NOMBRES_MES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+
+function fmtDiaCorto(iso) {
+  return new Date(iso + "T00:00:00").toLocaleDateString("es-PE", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+// ---------- Filtro con calendario personalizado, reutilizable ----------
+// Fabrica un widget de calendario (boton + popover) dentro de `contenedor`,
+// con navegacion rapida por dia/mes/año (clic en el titulo hace drill-down
+// a una grilla de meses, y de ahi a una grilla de años -- así cambiar de
+// año no requiere darle "siguiente" mes a mes), atajos "ver todo el
+// mes/año" y un modo de seleccion de RANGO (dos clics: dia de inicio y
+// dia de fin). `tieneDatosFn(fechaIso)` marca con un punto los dias que sí
+// tienen datos; `onCambiar(desde, hasta)` se llama cada vez que el filtro
+// cambia (ambos null = sin filtro / general).
+function crearFiltroCalendario({ contenedor, tieneDatosFn, onCambiar }) {
+  let desde = null, hasta = null;
+  let vista = "dias"; // "dias" | "meses" | "anios"
+  let vistaFecha = new Date();
+  let rangoActivo = false;
+  let rangoInicioTmp = null;
+
+  contenedor.insertAdjacentHTML("afterbegin", `
+    <div class="calendario-wrap">
+      <button type="button" class="btn-calendario" data-r="toggle"><span data-icon="clock"></span><span data-r="etiqueta">Todos los días</span></button>
+      <div class="calendario-pop" data-r="pop">
+        <div class="calendario-cabecera">
+          <button type="button" class="calendario-nav" data-r="prev">‹</button>
+          <button type="button" class="calendario-titulo-btn" data-r="titulo"></button>
+          <button type="button" class="calendario-nav" data-r="next">›</button>
+        </div>
+        <div class="calendario-dias-semana" data-r="diasSemana"><span>D</span><span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span></div>
+        <div class="calendario-grid" data-r="grid"></div>
+        <div class="calendario-hint" data-r="hint" style="display:none;"></div>
+        <div class="calendario-acciones">
+          <button type="button" class="calendario-accion" data-r="rango">Elegir rango</button>
+          <button type="button" class="calendario-accion" data-r="mes">Ver todo el mes</button>
+          <button type="button" class="calendario-accion" data-r="anio">Ver todo el año</button>
+        </div>
+      </div>
+    </div>
+    <button type="button" class="btn-limpiar-filtro" data-r="limpiar">Ver todo</button>
+  `);
+
+  const q = (sel) => contenedor.querySelector(sel);
+  const elToggle = q('[data-r="toggle"]');
+  const elEtiqueta = q('[data-r="etiqueta"]');
+  const elPop = q('[data-r="pop"]');
+  const elPrev = q('[data-r="prev"]');
+  const elNext = q('[data-r="next"]');
+  const elTitulo = q('[data-r="titulo"]');
+  const elDiasSemana = q('[data-r="diasSemana"]');
+  const elGrid = q('[data-r="grid"]');
+  const elHint = q('[data-r="hint"]');
+  const elBtnRango = q('[data-r="rango"]');
+  const elBtnMes = q('[data-r="mes"]');
+  const elBtnAnio = q('[data-r="anio"]');
+  const elLimpiar = q('[data-r="limpiar"]');
+
+  function abrir() { vista = "dias"; elPop.classList.add("abierto"); render(); }
+  function cerrar() {
+    elPop.classList.remove("abierto");
+    rangoActivo = false; rangoInicioTmp = null;
+    elBtnRango.classList.remove("activo");
+  }
+  elToggle.addEventListener("click", (ev) => {
+    ev.stopPropagation();
+    elPop.classList.contains("abierto") ? cerrar() : abrir();
+  });
+  // ev.composedPath() (no ev.target + .contains()) porque clickDia() puede
+  // reemplazar el innerHTML de la grilla en la MISMA pasada del evento --
+  // eso desconecta el boton del dia clicado del arbol del documento antes
+  // de que este listener corra, y contenedor.contains(ev.target) daria
+  // falso (nodo huerfano) aunque el clic haya sido claramente adentro,
+  // cerrando el popover a mitad de una seleccion de rango. composedPath()
+  // devuelve la ruta capturada ANTES de esa mutacion, asi que no se ve
+  // afectada por el reemplazo del innerHTML.
+  document.addEventListener("click", (ev) => {
+    if (!ev.composedPath().includes(contenedor)) cerrar();
+  });
+
+  elPrev.addEventListener("click", () => { navegar(-1); });
+  elNext.addEventListener("click", () => { navegar(1); });
+  function navegar(dir) {
+    if (vista === "dias") vistaFecha = new Date(vistaFecha.getFullYear(), vistaFecha.getMonth() + dir, 1);
+    else if (vista === "meses") vistaFecha = new Date(vistaFecha.getFullYear() + dir, vistaFecha.getMonth(), 1);
+    else vistaFecha = new Date(vistaFecha.getFullYear() + dir * 12, vistaFecha.getMonth(), 1);
+    render();
+  }
+
+  elTitulo.addEventListener("click", () => {
+    vista = vista === "dias" ? "meses" : vista === "meses" ? "anios" : "dias";
+    render();
+  });
+
+  elBtnRango.addEventListener("click", () => {
+    rangoActivo = !rangoActivo;
+    rangoInicioTmp = null;
+    elBtnRango.classList.toggle("activo", rangoActivo);
+    render();
+  });
+
+  elBtnMes.addEventListener("click", () => {
+    const anio = vistaFecha.getFullYear(), mes = vistaFecha.getMonth();
+    const ultimoDia = new Date(anio, mes + 1, 0).getDate();
+    aplicar(`${anio}-${String(mes + 1).padStart(2, "0")}-01`, `${anio}-${String(mes + 1).padStart(2, "0")}-${String(ultimoDia).padStart(2, "0")}`);
+    cerrar();
+  });
+  elBtnAnio.addEventListener("click", () => {
+    const anio = vistaFecha.getFullYear();
+    aplicar(`${anio}-01-01`, `${anio}-12-31`);
+    cerrar();
+  });
+  elLimpiar.addEventListener("click", () => { aplicar(null, null); cerrar(); });
+
+  elGrid.addEventListener("click", (ev) => {
+    const btnDia = ev.target.closest("[data-dia]");
+    if (btnDia) { clickDia(btnDia.dataset.dia); return; }
+    const btnMes = ev.target.closest("[data-mes]");
+    if (btnMes) { vistaFecha = new Date(vistaFecha.getFullYear(), Number(btnMes.dataset.mes), 1); vista = "dias"; render(); return; }
+    const btnAnio = ev.target.closest("[data-anio]");
+    if (btnAnio) { vistaFecha = new Date(Number(btnAnio.dataset.anio), vistaFecha.getMonth(), 1); vista = "meses"; render(); return; }
+  });
+
+  function clickDia(iso) {
+    if (rangoActivo) {
+      if (!rangoInicioTmp) {
+        rangoInicioTmp = iso;
+        render();
+        return;
+      }
+      const d1 = rangoInicioTmp < iso ? rangoInicioTmp : iso;
+      const d2 = rangoInicioTmp < iso ? iso : rangoInicioTmp;
+      rangoActivo = false; rangoInicioTmp = null;
+      elBtnRango.classList.remove("activo");
+      aplicar(d1, d2);
+      cerrar();
       return;
     }
-    const redondeo = Math.round(data.promedio);
-    const estrellas = [1, 2, 3, 4, 5].map((n) => estrellaSvg(n <= redondeo, 17)).join("");
-    resumenEl.innerHTML = `<b style="font-size:20px;color:var(--mov-navy);">${data.promedio.toFixed(1)}</b> / 5 ${estrellas} · basado en <b>${data.total}</b> calificaciones`;
-    const max = Math.max(1, ...Object.values(data.distribucion));
-    barrasEl.innerHTML = [5, 4, 3, 2, 1].map((n) => {
-      const cant = data.distribucion[n] || 0;
-      const pct = Math.round((cant / max) * 100);
-      return `
-        <div class="barra-row">
-          <div class="label">${n} ${estrellaSvg(true, 13)}</div>
-          <div class="pista"><div class="relleno" style="width:${pct}%"></div></div>
-          <div class="cuenta">${cant}</div>
-        </div>
+    aplicar(iso, iso);
+    cerrar();
+  }
+
+  function aplicar(d, h) {
+    desde = d; hasta = h;
+    actualizarEtiqueta();
+    onCambiar(desde, hasta);
+  }
+
+  function actualizarEtiqueta() {
+    if (!desde && !hasta) elEtiqueta.textContent = "Todos los días";
+    else if (desde === hasta) elEtiqueta.textContent = fmtDiaCorto(desde);
+    else elEtiqueta.textContent = `${fmtDiaCorto(desde)} – ${fmtDiaCorto(hasta)}`;
+  }
+
+  function render() {
+    elHint.style.display = rangoActivo ? "block" : "none";
+    if (rangoActivo) {
+      elHint.textContent = rangoInicioTmp ? `Elige el día final (inicio: ${fmtDiaCorto(rangoInicioTmp)})` : "Elige el día de inicio del rango";
+    }
+
+    if (vista === "anios") {
+      elDiasSemana.style.display = "none";
+      elGrid.className = "calendario-grid vista-anios";
+      const base = Math.floor(vistaFecha.getFullYear() / 12) * 12;
+      elTitulo.textContent = `${base} – ${base + 11}`;
+      let html = "";
+      for (let y = base; y < base + 12; y++) {
+        const cls = y === vistaFecha.getFullYear() ? "calendario-dia calendario-celda-grande seleccionado" : "calendario-dia calendario-celda-grande";
+        html += `<button type="button" class="${cls}" data-anio="${y}">${y}</button>`;
+      }
+      elGrid.innerHTML = html;
+      return;
+    }
+    if (vista === "meses") {
+      elDiasSemana.style.display = "none";
+      elGrid.className = "calendario-grid vista-meses";
+      elTitulo.textContent = String(vistaFecha.getFullYear());
+      let html = "";
+      for (let m = 0; m < 12; m++) {
+        const cls = m === vistaFecha.getMonth() ? "calendario-dia calendario-celda-grande seleccionado" : "calendario-dia calendario-celda-grande";
+        html += `<button type="button" class="${cls}" data-mes="${m}">${NOMBRES_MES[m].slice(0, 3)}</button>`;
+      }
+      elGrid.innerHTML = html;
+      return;
+    }
+
+    elDiasSemana.style.display = "grid";
+    elGrid.className = "calendario-grid";
+    const anio = vistaFecha.getFullYear(), mes = vistaFecha.getMonth();
+    elTitulo.textContent = `${NOMBRES_MES[mes]} ${anio}`;
+    const primerDiaSemana = new Date(anio, mes, 1).getDay();
+    const totalDias = new Date(anio, mes + 1, 0).getDate();
+    const mesStr = String(mes + 1).padStart(2, "0");
+    const hoyIso = fmtFechaISO(new Date().toISOString());
+    let html = "";
+    for (let i = 0; i < primerDiaSemana; i++) html += `<span class="calendario-dia vacio"></span>`;
+    for (let d = 1; d <= totalDias; d++) {
+      const iso = `${anio}-${mesStr}-${String(d).padStart(2, "0")}`;
+      const clases = ["calendario-dia"];
+      if (iso === hoyIso) clases.push("hoy");
+      if (tieneDatosFn && tieneDatosFn(iso)) clases.push("tiene-datos");
+      if (iso === desde || iso === hasta || iso === rangoInicioTmp) clases.push("seleccionado");
+      else if (desde && hasta && iso > desde && iso < hasta) clases.push("en-rango");
+      html += `<button type="button" class="${clases.join(" ")}" data-dia="${iso}">${d}</button>`;
+    }
+    elGrid.innerHTML = html;
+  }
+
+  return {
+    limpiar: () => aplicar(null, null),
+    irA: (d, h) => { desde = d; hasta = h; vistaFecha = new Date(d + "T00:00:00"); actualizarEtiqueta(); onCambiar(desde, hasta); },
+    obtener: () => ({ desde, hasta }),
+  };
+}
+
+// Datos crudos guardados en memoria para poder filtrar por mes/año sin
+// volver a pedirlos al servidor cada vez que el usuario cambia el filtro.
+// CALIF_DETALLE: solo las filas CON calificacion (alimenta el grafico, que
+// no puede promediar algo que no existe). CONVERSACIONES_TABLA: TODAS las
+// conversaciones (interacciones_log agrupadas), hayan calificado o no --
+// alimenta la lista de la izquierda, que debe mostrar a todo el mundo.
+let CALIF_DETALLE = [];
+let CONVERSACIONES_TABLA = [];
+
+// Por encima de esta cantidad de meses distintos en el filtro, ya no tiene
+// sentido pintar una barra por mes -- en ese caso el grafico colapsa a UNA
+// sola barra con el promedio de todo el periodo.
+const MAX_MESES_EN_CHART = 24;
+
+// Une cada conversacion (agrupada igual que en la vista Conversaciones) con
+// su calificacion si es que califico -- si no, queda con puntaje null y la
+// tabla la muestra igual, con "-/10" en gris.
+function construirConversacionesTabla(logs, calificaciones) {
+  const porKey = new Map();
+  for (const c of calificaciones) {
+    const key = c.telefono ? `wa-${c.telefono}` : `web-${c.cuenta || "sin-cuenta"}`;
+    if (!porKey.has(key)) porKey.set(key, c); // ya viene ordenado DESC -> la primera es la mas reciente
+  }
+  return agruparPorConversacion(logs).map((g) => {
+    const rating = porKey.get(g.key);
+    return {
+      key: g.key,
+      telefono: g.telefono,
+      cuenta: g.cuenta,
+      canal: g.canal,
+      puntaje: rating ? rating.puntaje : null,
+      nps: rating ? rating.nps : null,
+      observacion: rating ? rating.observacion : null,
+      creado_en: g.mensajes[g.mensajes.length - 1].creado_en,
+    };
+  });
+}
+
+async function cargarMetricasCalificacion() {
+  const resumenEl = document.getElementById("califResumen");
+  const npsGridEl = document.getElementById("statGridNps");
+  try {
+    const [resAgg, resDetalle, resLogs] = await Promise.all([
+      fetch(`${API}/metricas/calificaciones`),
+      fetch(`${API}/metricas/calificaciones/detalle?limit=300`),
+      fetch(`${API}/logs/interacciones?limit=300`),
+    ]);
+    const data = await resAgg.json();
+    CALIF_DETALLE = await resDetalle.json();
+    const logs = await resLogs.json();
+    CONVERSACIONES_TABLA = construirConversacionesTabla(logs, CALIF_DETALLE);
+
+    if (!data.total) {
+      resumenEl.innerHTML = "Todavía no hay calificaciones registradas. Se piden automáticamente cuando el bot cierra una conversación.";
+      npsGridEl.innerHTML = "";
+    } else {
+      resumenEl.innerHTML = `<b style="font-size:20px;color:var(--mov-navy);">${data.promedio.toFixed(1)}</b> / 10 · <b>NPS ${data.nps >= 0 ? "+" : ""}${data.nps}</b> · basado en <b>${data.total}</b> calificaciones (general, todos los días)`;
+      npsGridEl.innerHTML = `
+        <div class="stat-card ok"><div class="valor">${data.promotores}</div><div class="etiqueta">Promotores (9-10)</div></div>
+        <div class="stat-card neutro"><div class="valor">${data.pasivos}</div><div class="etiqueta">Pasivos (7-8)</div></div>
+        <div class="stat-card alerta"><div class="valor">${data.detractores}</div><div class="etiqueta">Detractores (1-6)</div></div>
       `;
-    }).join("");
+    }
+
+    // animar=false: esto puede venir del refresco automatico cada 20s, no
+    // de una accion del usuario, asi que el grafico no debe re-animarse.
+    renderizarTablaCalificaciones(false);
   } catch (e) {
     resumenEl.innerHTML = "No se pudo cargar la calificación.";
   }
 }
+
+// ---------- Filtro de calendario de la pestaña Satisfaccion ----------
+// Instancia del widget generico: se crea recien cuando la vista existe en
+// el DOM (mas abajo, junto a las demas inicializaciones). Filtra por
+// rango de fechas (desde === hasta -> un solo dia).
+let filtroCalif = null;
+function inicializarFiltroCalif() {
+  if (filtroCalif) return;
+  filtroCalif = crearFiltroCalendario({
+    contenedor: document.getElementById("filtroCalifControles"),
+    tieneDatosFn: (iso) => CALIF_DETALLE.some((f) => fmtFechaISO(f.creado_en) === iso),
+    onCambiar: () => renderizarTablaCalificaciones(true),
+  });
+}
+
+// Al hacer clic en una barra del grafico, salta a ver ese mes completo.
+function irAMesDesdeGrafico(mesISO) {
+  if (!mesISO || !filtroCalif) return;
+  const [anio, mes] = mesISO.split("-");
+  const ultimoDia = new Date(Number(anio), Number(mes), 0).getDate();
+  filtroCalif.irA(`${mesISO}-01`, `${mesISO}-${String(ultimoDia).padStart(2, "0")}`);
+}
+window.irAMesDesdeGrafico = irAMesDesdeGrafico;
+
+// Devuelve, dada una lista con .creado_en, solo las filas dentro del
+// rango Desde/Hasta activo. Sin nada elegido, devuelve todo (general).
+function filasEnFiltroActual(lista) {
+  if (!filtroCalif) return lista;
+  const { desde, hasta } = filtroCalif.obtener();
+  if (!desde && !hasta) return lista;
+  return lista.filter((f) => {
+    const fecha = fmtFechaISO(f.creado_en);
+    return fecha >= desde && fecha <= hasta;
+  });
+}
+
+// Agrupa filas de calificacion (con .puntaje) por mes en hora de Lima.
+function agruparPorMes(filas) {
+  const mapa = new Map();
+  for (const f of filas) {
+    const mesIso = fmtFechaISO(f.creado_en).slice(0, 7); // "YYYY-MM"
+    if (!mapa.has(mesIso)) mapa.set(mesIso, { mes: mesIso, total: 0, suma: 0 });
+    const g = mapa.get(mesIso);
+    g.total++;
+    g.suma += f.puntaje;
+  }
+  return [...mapa.values()]
+    .map((g) => ({ mes: g.mes, total: g.total, promedio: g.suma / g.total }))
+    .sort((a, b) => a.mes.localeCompare(b.mes));
+}
+
+function mesCorto(mesIso) {
+  const [anio, mes] = mesIso.split("-");
+  return `${NOMBRES_MES[Number(mes) - 1].slice(0, 3)} ${anio}`;
+}
+
+// Decide como se ve el grafico segun cuantos meses distintos hay en el
+// filtro actual: uno por mes si son pocos (detalle real), o una sola barra
+// resumen si son demasiados (ej. "General" tras años de uso).
+function prepararGruposChart(filas) {
+  const porMes = agruparPorMes(filas);
+  if (porMes.length === 0) return [];
+  if (porMes.length <= MAX_MESES_EN_CHART) {
+    return porMes.map((g) => ({
+      promedio: g.promedio,
+      etiqueta: mesCorto(g.mes),
+      titulo: `Ver el detalle de ${mesCorto(g.mes)}`,
+      mesClick: g.mes,
+    }));
+  }
+  const total = filas.reduce((s, f) => s + f.puntaje, 0);
+  return [{
+    promedio: total / filas.length,
+    etiqueta: `${mesCorto(porMes[0].mes)} – ${mesCorto(porMes[porMes.length - 1].mes)}`,
+    titulo: `Promedio de ${porMes.length} meses (elige un año o mes para ver el detalle)`,
+    mesClick: null,
+  }];
+}
+
+// Pinta el grafico de barras. Si animar=true, las inserta en altura 0 y
+// las lleva a su altura real en el mismo instante (forzando un reflow, mas
+// confiable que requestAnimationFrame en pestañas sin foco) para el efecto
+// de crecimiento -- pero SOLO cuando el cambio vino de una accion real del
+// usuario, nunca en el refresco automatico de cada 20s.
+function renderizarChartCalifDia(grupos, animar) {
+  const chartDiaEl = document.getElementById("chartCalifDia");
+  if (!grupos.length) {
+    chartDiaEl.innerHTML = '<div class="cargando">No hay calificaciones en este filtro.</div>';
+    return;
+  }
+  chartDiaEl.innerHTML = grupos.map((d) => {
+    const alturaPx = Math.max(6, Math.round((d.promedio / 10) * 150));
+    const clickAttr = d.mesClick ? ` onclick="irAMesDesdeGrafico('${d.mesClick}')"` : "";
+    return `
+      <div class="barra-dia"${clickAttr} title="${d.titulo}">
+        <div class="valor-num">${d.promedio.toFixed(1)}</div>
+        <div class="valor-barra" data-h="${alturaPx}" style="height:${animar ? 0 : alturaPx}px"></div>
+        <div class="etiqueta-dia">${d.etiqueta}</div>
+      </div>
+    `;
+  }).join("");
+  if (!animar) return;
+  void chartDiaEl.offsetHeight;
+  chartDiaEl.querySelectorAll(".valor-barra").forEach((el) => {
+    el.style.height = el.dataset.h + "px";
+  });
+}
+
+// Busca por telefono (numeros parciales) o numero de cuenta dentro de la
+// lista ya filtrada por fecha -- se aplica solo a la tabla, no al grafico.
+function filasTablaConBusqueda(filas) {
+  const term = (document.getElementById("buscarClienteCalif").value || "").trim();
+  if (!term) return filas;
+  const termDigits = term.replace(/\D/g, "");
+  const termLower = term.toLowerCase();
+  return filas.filter((f) => {
+    if (termDigits && String(f.telefono || "").includes(termDigits)) return true;
+    if (String(f.cuenta || "").toLowerCase().includes(termLower)) return true;
+    return false;
+  });
+}
+
+function aplicarBusquedaCalif() { renderizarTablaCalificaciones(false); }
+window.aplicarBusquedaCalif = aplicarBusquedaCalif;
+
+// Filtra CALIF_DETALLE (solo calificadas, para el grafico) y
+// CONVERSACIONES_TABLA (TODAS las conversaciones, para la lista) con el
+// mismo criterio de fecha, y ademas la lista con la busqueda por
+// telefono/cuenta -- todo vinculado al mismo filtro.
+function renderizarTablaCalificaciones(animar) {
+  const resumenFiltroEl = document.getElementById("resumenFiltroCalif");
+  const tablaEl = document.getElementById("tablaCalificaciones");
+
+  const filasChart = filasEnFiltroActual(CALIF_DETALLE);
+  const filasTabla = filasTablaConBusqueda(filasEnFiltroActual(CONVERSACIONES_TABLA));
+
+  renderizarChartCalifDia(prepararGruposChart(filasChart), !!animar);
+
+  let etiquetaFiltro = "Promedio general";
+  const { desde: desdeCalif, hasta: hastaCalif } = filtroCalif ? filtroCalif.obtener() : {};
+  if (desdeCalif && hastaCalif) {
+    etiquetaFiltro = desdeCalif === hastaCalif
+      ? `Promedio del ${fmtDiaCorto(desdeCalif)}`
+      : `Promedio del ${fmtDiaCorto(desdeCalif)} al ${fmtDiaCorto(hastaCalif)}`;
+  }
+
+  if (filasChart.length) {
+    const promedioFiltro = filasChart.reduce((s, d) => s + d.puntaje, 0) / filasChart.length;
+    resumenFiltroEl.innerHTML = `${etiquetaFiltro}: <b>${promedioFiltro.toFixed(1)} / 10</b> · ${filasChart.length} calificación(es)`;
+  } else {
+    resumenFiltroEl.innerHTML = `${etiquetaFiltro}: sin calificaciones en este filtro`;
+  }
+
+  if (!filasTabla.length) {
+    tablaEl.innerHTML = '<div class="cargando">No hay conversaciones para este filtro.</div>';
+    return;
+  }
+
+  tablaEl.innerHTML = filasTabla.map((d) => {
+    const contacto = formatearTelefono(d.telefono) || `Cuenta ${d.cuenta || "?"}`;
+    const observacionHtml = d.observacion
+      ? `<div class="observacion">${icono("fileText", 14)} ${esc(d.observacion)}</div>`
+      : "";
+    const badgeHtml = d.puntaje != null
+      ? `<span class="nota-badge ${claseNpsColor(d.nps)}">${d.puntaje}/10</span>`
+      : `<span class="nota-badge sin-calificar">-/10</span>`;
+    return `
+      <div class="calif-row">
+        <div class="info">
+          <div class="top-line">
+            <span class="contacto-fila">${esc(contacto)}</span>
+            ${badgeHtml}
+          </div>
+          <div class="sub-fila">Cuenta ${esc(d.cuenta || "—")} <span class="canal-pill ${d.canal}">${esc(d.canal || "?")}</span> · ${fmtFechaHora(d.creado_en)}</div>
+          ${observacionHtml}
+        </div>
+        <button class="btn-ver-conv" onclick="verConversacionDesde('${d.key}')">${icono("chat", 15)} Ver conversación</button>
+      </div>
+    `;
+  }).join("");
+}
+window.renderizarTablaCalificaciones = renderizarTablaCalificaciones;
+
+// Salta a la vista de Conversaciones y abre el hilo del cliente que dio esa
+// calificacion, sin importar si fue un 1/10 o un 10/10.
+function verConversacionDesde(key) {
+  cambiarVista("conversaciones");
+  if (CHATS.some((c) => c.key === key)) {
+    abrirChat(key);
+  } else {
+    // Puede que el chat todavia no este cargado en memoria (ej. recien se
+    // entro a la pestana) -- lo recargamos y recien ahi abrimos.
+    cargarChats().then(() => abrirChat(key));
+  }
+}
+window.verConversacionDesde = verConversacionDesde;
 
 // ---------- Agentes ----------
 async function cargarAgentes() {
@@ -495,7 +1104,7 @@ async function cargarAgentes() {
     const agentes = await res.json();
     el.innerHTML = agentes.map((a) => `
       <div class="agente-card">
-        <div class="avatar-agente">${icono("circleUser", 26)}</div>
+        <div class="avatar-agente">${icono("circleUser", 28)}</div>
         <div>
           <div class="nombre-agente">${esc(a.nombre)}</div>
           <div class="area-agente">${esc(a.area)}</div>
@@ -508,27 +1117,50 @@ async function cargarAgentes() {
   }
 }
 
+// Las derivaciones se muestran separadas POR AGENTE (una seccion por
+// asesor del roster, cada una con su propia lista) en vez de una sola
+// lista mezclada -- asi se ve de un vistazo cuanto le esta tocando a cada
+// quien.
 async function cargarDerivaciones() {
   const el = document.getElementById("derivacionesLista");
   try {
-    const res = await fetch(`${API}/derivaciones?limit=40`);
-    const derivaciones = await res.json();
-    if (!derivaciones.length) {
-      el.innerHTML = '<div class="cargando">Todavía no hay derivaciones. Ocurren cuando un cliente pide hablar con un asesor.</div>';
-      return;
-    }
-    el.innerHTML = derivaciones.map((d) => {
-      const contacto = formatearTelefono(d.telefono) || `Cuenta ${d.cuenta || "?"}`;
+    const [resAgentes, resDeriv] = await Promise.all([
+      fetch(`${API}/agentes`),
+      fetch(`${API}/derivaciones?limit=200`),
+    ]);
+    const agentes = await resAgentes.json();
+    const derivaciones = await resDeriv.json();
+
+    el.innerHTML = agentes.map((a) => {
+      const propias = derivaciones.filter((d) => d.agente_nombre === a.nombre);
+      const listaHtml = propias.length
+        ? propias.map((d) => {
+            const contacto = formatearTelefono(d.telefono) || `Cuenta ${d.cuenta || "?"}`;
+            const key = d.telefono ? `wa-${d.telefono}` : `web-${d.cuenta || "sin-cuenta"}`;
+            return `
+              <div class="derivacion-row">
+                <div class="avatar-agente">${icono("headset", 20)}</div>
+                <div class="info">
+                  <div class="top-line">
+                    <span class="titulo-fila">${esc(contacto)}</span>
+                    <span class="hora">${fmtFechaHora(d.creado_en)}</span>
+                  </div>
+                  <div class="contexto">${esc(d.contexto || "")}</div>
+                </div>
+                <button class="btn-ver-conv" onclick="verConversacionDesde('${key}')">${icono("chat", 15)} Ver conversación</button>
+              </div>
+            `;
+          }).join("")
+        : '<div class="cargando">Todavía no ha recibido derivaciones.</div>';
       return `
-        <div class="derivacion-row">
-          <div class="avatar-agente">${icono("headset", 18)}</div>
-          <div class="info">
-            <div class="top-line">
-              <span class="titulo-fila">${esc(contacto)} ${icono("chevronRight", 13)} ${esc(d.agente_nombre)} <span style="color:#99a;font-weight:400;">(${esc(d.agente_area)})</span></span>
-              <span class="hora">${fmtFechaHora(d.creado_en)}</span>
-            </div>
-            <div class="contexto">${esc(d.contexto || "")}</div>
+        <div class="derivaciones-agente">
+          <div class="derivaciones-agente-cabecera">
+            <span class="avatar-emoji-mini">${esc(a.avatar || "")}</span>
+            <span class="nombre-agente-mini">${esc(a.nombre)}</span>
+            <span class="area-agente-mini">${esc(a.area)}</span>
+            <span class="conteo-derivaciones">${propias.length}</span>
           </div>
+          ${listaHtml}
         </div>
       `;
     }).join("");
@@ -559,7 +1191,7 @@ function renderizarAlucinaciones(data) {
     ? `${data.sin_alucinaciones} de ${data.total_analizadas} respuestas de la IA citaron solo montos respaldados por los hechos${data.con_alerta ? ` · ${data.con_alerta} con algún monto sin respaldo` : ""}`
     : "Todavía no hay respuestas de la IA para auditar.";
   if (data.flagueadas && data.flagueadas.length) {
-    listaEl.innerHTML = "<b style='font-size:12px;color:var(--rojo);display:flex;align-items:center;gap:5px;'>" + icono("alertTriangle", 14) + " Casos a revisar:</b>" + data.flagueadas.map((f) => `
+    listaEl.innerHTML = "<b style='font-size:12px;color:var(--rojo);display:flex;align-items:center;gap:5px;'>" + icono("alertTriangle", 16) + " Casos a revisar:</b>" + data.flagueadas.map((f) => `
       <div style="font-size:11.5px;color:#667;border-left:2px solid var(--rojo);padding:4px 8px;margin-top:6px;">
         Montos sin respaldo: ${esc(f.montos_sin_respaldo.join(", "))}<br>${esc((f.respuesta || "").slice(0, 140))}…
       </div>
@@ -587,36 +1219,202 @@ function renderizarClientesPorDia(data) {
   }).join("");
 }
 
-function renderizarProblemasFrecuentes(data) {
-  const el = document.getElementById("problemasBarras");
-  if (!data.length) { el.innerHTML = '<div class="cargando">Todavía no hay causas registradas.</div>'; return; }
-  const max = Math.max(1, ...data.map((d) => d.total));
-  el.innerHTML = data.map((d) => {
-    const pct = Math.round((d.total / max) * 100);
-    const meta = ETIQUETAS_CAUSA[d.tipo] || { icono: "circleHelp", texto: d.tipo };
+// Colores solidos por tipo de causa para el grafico de dona -- ninguno
+// degradado (cada gajo es un color puro, sin transicion suave con el de al
+// lado, gracias a los "hard stops" del conic-gradient).
+const COLORES_CAUSA = {
+  prorrateo: "#019df4",
+  reconexion: "#00aeef",
+  fin_descuento: "#d97a00",
+  financiamiento: "#1fae5c",
+  cambio_plan: "#0177c2",
+  nota_credito: "#c0392b",
+  otro: "#6b7280",
+};
+
+// Datos crudos (interacciones_log tal cual) para poder filtrar por fecha Y
+// por causa en el navegador, sin volver a pedirlos al servidor cada vez.
+let ANALITICA_DETALLE = [];
+let CAUSA_SELECCIONADA = null;
+let filtroAnalitica = null;
+
+function inicializarFiltroAnalitica() {
+  if (filtroAnalitica) return;
+  filtroAnalitica = crearFiltroCalendario({
+    contenedor: document.getElementById("filtroAnaliticaControles"),
+    tieneDatosFn: (iso) => ANALITICA_DETALLE.some((f) => fmtFechaISO(f.creado_en) === iso),
+    onCambiar: () => renderizarAnaliticaFiltrada(),
+  });
+}
+
+function filasAnaliticaEnFiltro() {
+  if (!filtroAnalitica) return ANALITICA_DETALLE;
+  const { desde, hasta } = filtroAnalitica.obtener();
+  if (!desde && !hasta) return ANALITICA_DETALLE;
+  return ANALITICA_DETALLE.filter((f) => {
+    const dia = fmtFechaISO(f.creado_en);
+    return dia >= desde && dia <= hasta;
+  });
+}
+
+// Clic en un gajo/leyenda de la dona: lo aisla (y filtra "Clientes
+// atendidos por día" a solo esa causa) -- un segundo clic en el mismo lo
+// vuelve a mostrar todo.
+function clickCausaDonut(tipo) {
+  CAUSA_SELECCIONADA = CAUSA_SELECCIONADA === tipo ? null : tipo;
+  renderizarAnaliticaFiltrada();
+}
+window.clickCausaDonut = clickCausaDonut;
+
+// Tooltip tipo Power BI: un solo div flotante que se reposiciona con el
+// mouse sobre el gajo que se esta mirando (los gajos son <circle> de SVG
+// independientes -- no una sola imagen de fondo -- justamente para poder
+// engancharles su propio hover).
+function mostrarTooltipDonut(ev) {
+  const el = ev.currentTarget;
+  const tip = document.getElementById("donutTooltip");
+  if (!tip) return;
+  tip.innerHTML = `<b>${esc(el.dataset.texto)}</b><br>${el.dataset.total} caso(s) · ${el.dataset.pct}%`;
+  tip.style.left = (ev.clientX + 14) + "px";
+  tip.style.top = (ev.clientY + 14) + "px";
+  tip.style.opacity = "1";
+}
+function ocultarTooltipDonut() {
+  const tip = document.getElementById("donutTooltip");
+  if (tip) tip.style.opacity = "0";
+}
+
+function renderizarDonutProblemas(filas) {
+  const el = document.getElementById("donutProblemas");
+  const conteo = {};
+  for (const f of filas) {
+    for (const c of (f.hechos?.causas || [])) {
+      if (!c?.tipo) continue;
+      conteo[c.tipo] = (conteo[c.tipo] || 0) + 1;
+    }
+  }
+  const entradas = Object.entries(conteo).sort((a, b) => b[1] - a[1]);
+  const total = entradas.reduce((s, [, n]) => s + n, 0);
+  if (!total) {
+    el.innerHTML = '<div class="cargando">Todavía no hay causas registradas en este filtro.</div>';
+    return;
+  }
+
+  // r = 15.9155 hace que la circunferencia del circulo mida exactamente
+  // 100 -- asi el stroke-dasharray/dashoffset se puede expresar directo en
+  // porcentaje, sin tener que calcular longitudes de arco a mano.
+  const R = 15.9155;
+  let acumulado = 0;
+  const gajosSvg = entradas.map(([tipo, n]) => {
+    const pct = (n / total) * 100;
+    const dashoffset = -acumulado;
+    acumulado += pct;
+    const meta = ETIQUETAS_CAUSA[tipo] || { icono: "circleHelp", texto: tipo };
+    const activo = CAUSA_SELECCIONADA === tipo;
+    const apagado = CAUSA_SELECCIONADA && !activo;
+    // fill="none" (NO "transparent") + pointer-events="stroke" es
+    // deliberado: con fill="transparent" el navegador cuenta el CIRCULO
+    // COMPLETO como "pintado" para hit-testing (no solo el arco visible),
+    // asi que el ultimo gajo dibujado (el mas chico, queda encima) tapaba
+    // TODO el area de la dona para el mouse -- por eso siempre mostraba el
+    // mismo gajo sin importar donde pasaras el cursor.
+    return `<circle class="donut-gajo" cx="18" cy="18" r="${R}" fill="none" pointer-events="stroke" stroke="${COLORES_CAUSA[tipo] || "#6b7280"}" stroke-width="${activo ? 7 : 5}" stroke-dasharray="${pct} ${100 - pct}" stroke-dashoffset="${dashoffset}" style="opacity:${apagado ? 0.35 : 1}" data-tipo="${tipo}" data-total="${n}" data-pct="${pct.toFixed(1)}" data-texto="${esc(meta.texto)}"></circle>`;
+  }).join("");
+
+  const leyendaTodos = `
+    <button type="button" class="donut-leyenda-item donut-leyenda-todos ${!CAUSA_SELECCIONADA ? "activo" : ""}" onclick="clickCausaDonut(null)">
+      ${icono("refreshCw", 15)} Todos los problemas
+      <span class="donut-total-mini">${total}</span>
+    </button>
+  `;
+  const leyenda = entradas.map(([tipo, n]) => {
+    const meta = ETIQUETAS_CAUSA[tipo] || { icono: "circleHelp", texto: tipo };
+    const activo = CAUSA_SELECCIONADA === tipo;
+    const apagado = CAUSA_SELECCIONADA && !activo;
     return `
-      <div class="barra-row">
-        <div class="label">${icono(meta.icono, 15)} ${meta.texto}</div>
-        <div class="pista"><div class="relleno" style="width:${pct}%"></div></div>
-        <div class="cuenta">${d.total}</div>
-      </div>
+      <button type="button" class="donut-leyenda-item ${activo ? "activo" : ""} ${apagado ? "apagado" : ""}" onclick="clickCausaDonut('${tipo}')">
+        <span class="donut-swatch" style="background:${COLORES_CAUSA[tipo] || "#6b7280"}"></span>
+        ${icono(meta.icono, 15)} ${meta.texto}
+        <span class="donut-total-mini">${n}</span>
+      </button>
     `;
   }).join("");
+
+  el.innerHTML = `
+    <div class="donut-svg-wrap">
+      <svg viewBox="0 0 36 36" class="donut-svg">${gajosSvg}</svg>
+      <div class="donut-hueco">
+        <div class="donut-total">${total}</div>
+        <div class="donut-total-etiqueta">causas detectadas</div>
+      </div>
+    </div>
+    <div class="donut-leyenda">${leyendaTodos}${leyenda}</div>
+    <div class="donut-tooltip" id="donutTooltip"></div>
+  `;
+
+  el.querySelectorAll(".donut-gajo").forEach((c) => {
+    c.addEventListener("mouseenter", mostrarTooltipDonut);
+    c.addEventListener("mousemove", mostrarTooltipDonut);
+    c.addEventListener("mouseleave", ocultarTooltipDonut);
+    c.addEventListener("click", () => clickCausaDonut(c.dataset.tipo));
+  });
+}
+
+// Por encima de esta cantidad de dias distintos, el chart de barras por
+// dia deja de tener sentido visualmente -- se pide elegir un periodo mas
+// corto en vez de intentar pintar decenas de barras diminutas.
+const MAX_DIAS_CLIENTES_CHART = 62;
+
+function renderizarClientesPorDiaFiltrado(filas) {
+  const mapa = new Map();
+  for (const f of filas) {
+    const dia = fmtFechaISO(f.creado_en);
+    if (!mapa.has(dia)) mapa.set(dia, new Set());
+    mapa.get(dia).add(f.telefono || f.cuenta || "?");
+  }
+  const dias = [...mapa.entries()]
+    .map(([dia, set]) => ({ dia, clientes: set.size }))
+    .sort((a, b) => a.dia.localeCompare(b.dia));
+
+  if (dias.length > MAX_DIAS_CLIENTES_CHART) {
+    document.getElementById("chartClientesDia").innerHTML =
+      `<div class="cargando">El período elegido tiene ${dias.length} días -- elige uno más corto (un mes, por ejemplo) para ver el detalle día por día.</div>`;
+    return;
+  }
+  renderizarClientesPorDia(dias);
+}
+
+function renderizarAnaliticaFiltrada() {
+  const filasFecha = filasAnaliticaEnFiltro();
+  const filasCausa = CAUSA_SELECCIONADA
+    ? filasFecha.filter((f) => (f.hechos?.causas || []).some((c) => c.tipo === CAUSA_SELECCIONADA))
+    : filasFecha;
+
+  renderizarDonutProblemas(filasFecha);
+  renderizarClientesPorDiaFiltrado(filasCausa);
+
+  const { desde, hasta } = filtroAnalitica ? filtroAnalitica.obtener() : {};
+  let etiqueta = "General (todo el historial)";
+  if (desde && hasta) etiqueta = desde === hasta ? `Día: ${fmtDiaCorto(desde)}` : `Del ${fmtDiaCorto(desde)} al ${fmtDiaCorto(hasta)}`;
+  const causaTxt = CAUSA_SELECCIONADA ? ` · aislado a "${(ETIQUETAS_CAUSA[CAUSA_SELECCIONADA] || {}).texto || CAUSA_SELECCIONADA}"` : "";
+  document.getElementById("resumenFiltroAnalitica").innerHTML = `${etiqueta}${causaTxt}`;
 }
 
 async function cargarAnalitica() {
+  inicializarFiltroAnalitica();
   try {
-    const [resAluc, resAnalitica] = await Promise.all([
+    const [resAluc, resAnalitica, resLogs] = await Promise.all([
       fetch(`${API}/metricas/alucinaciones`),
       fetch(`${API}/metricas/analitica`),
+      fetch(`${API}/logs/interacciones?limit=500`),
     ]);
     const aluc = await resAluc.json();
     const analitica = await resAnalitica.json();
+    ANALITICA_DETALLE = await resLogs.json();
     renderizarAlucinaciones(aluc);
-    renderizarClientesPorDia(analitica.clientesPorDia);
-    renderizarProblemasFrecuentes(analitica.problemasFrecuentes);
     document.getElementById("statDerivacionesTotal").textContent = analitica.derivacionesTotal;
     document.getElementById("statBeneficioMostrado").textContent = analitica.beneficioMostrado;
+    renderizarAnaliticaFiltrada();
   } catch (e) {
     document.getElementById("pctAlucinaciones").textContent = "—";
     document.getElementById("detalleAlucinaciones").textContent = "No se pudo cargar la analítica.";
@@ -711,13 +1509,13 @@ function abrirChat(key) {
     const badgeId = `hechos-${log.id}`;
     let badge, burbujaTexto, panelHechos;
     if (v.ok === null) {
-      badge = `<span class="badge-mini neutro">${icono("zap", 12)} automática, sin IA</span>`;
+      badge = `<span class="badge-mini neutro">${icono("zap", 14)} automática, sin IA</span>`;
       burbujaTexto = esc(log.respuesta);
       panelHechos = "";
     } else {
       badge = v.ok
-        ? `<span class="badge-mini ok" onclick="toggleHechos('${badgeId}')">${icono("checkCircle", 12)} ${v.totalCitados} monto(s) verificados</span>`
-        : `<span class="badge-mini alerta" onclick="toggleHechos('${badgeId}')">${icono("alertTriangle", 12)} ${v.noEncontrados.length} sin respaldo</span>`;
+        ? `<span class="badge-mini ok" onclick="toggleHechos('${badgeId}')">${icono("checkCircle", 14)} ${v.totalCitados} monto(s) verificados</span>`
+        : `<span class="badge-mini alerta" onclick="toggleHechos('${badgeId}')">${icono("alertTriangle", 14)} ${v.noEncontrados.length} sin respaldo</span>`;
       burbujaTexto = resaltarMontos(log.respuesta, v.noEncontrados);
       panelHechos = `<div class="hechos-panel" id="${badgeId}"><pre>${esc(JSON.stringify(log.hechos, null, 2))}</pre></div>`;
     }
@@ -755,6 +1553,8 @@ async function cargarChats() {
 }
 
 pintarIconosEstaticos();
+inicializarFiltroCalif();
+inicializarFiltroAnalitica();
 cargarMetricasHeader();
 cargarChats();
 setInterval(() => {

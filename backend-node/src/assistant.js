@@ -47,12 +47,22 @@ const MARCA_LISTADO_RECIBOS = "cual quieres que te explique";
 // Mismo patron para la calificacion: marca literal y fija (mensaje
 // deterministico, no redactado por Claude) para poder detectar con certeza,
 // en el turno SIGUIENTE, que lo que sigue es la respuesta a "califica del 1
-// al 5" y no un mensaje cualquiera. Si fuera un mensaje de Claude (variable)
-// no podriamos anclar la deteccion de forma confiable.
+// al 10" y no un mensaje cualquiera. Si fuera un mensaje de Claude (variable)
+// no podriamos anclar la deteccion de forma confiable. Escala 1-10 (no 1-5)
+// a proposito, para alinearla con el estilo NPS que usa la ficha.
 const MARCA_PEDIR_CALIFICACION = "calificarias esta atencion";
 const MENSAJES_PEDIR_CALIFICACION = [
-  "¡Genial! Antes de despedirme, ¿del 1 al 5 cómo calificarías esta atención? (1 = mala, 5 = excelente) ⭐",
-  "¡De nada! Una última cosa: ¿del 1 al 5 cómo calificarías esta atención? (1 = mala, 5 = excelente) ⭐",
+  "¡Genial! Antes de despedirme, ¿del 1 al 10 cómo calificarías esta atención?",
+  "¡De nada! Una última cosa: ¿del 1 al 10 cómo calificarías esta atención?",
+];
+
+// Si la nota es menor a 10, pedimos una observacion puntual de que se podria
+// mejorar -- misma logica de marca fija para detectar la respuesta en el
+// turno siguiente sin ambiguedad.
+const MARCA_PEDIR_MEJORA = "que podriamos mejorar";
+const MENSAJES_PEDIR_MEJORA = [
+  "Gracias por la sinceridad. ¿Qué podríamos mejorar para que la próxima vez sea un 10?",
+  "Entendido, gracias. ¿Hay algo puntual que podríamos mejorar?",
 ];
 
 const MESES_LARGO = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
@@ -81,11 +91,33 @@ function botPidioCalificacion(historial) {
   return normalizar(ultimoBot.content).includes(MARCA_PEDIR_CALIFICACION);
 }
 
-// Acepta un digito 1-5 solo, o dentro de una frase corta ("le doy un 4", "4
-// estrellas"). No intenta interpretar palabras ("excelente", "mala") para
-// mantener el parseo simple y sin ambiguedad.
+function botPidioMejora(historial) {
+  const ultimoBot = [...historial].reverse().find((h) => h.role === "bot");
+  if (!ultimoBot) return false;
+  return normalizar(ultimoBot.content).includes(MARCA_PEDIR_MEJORA);
+}
+
+// Busca, dentro del historial, la nota 1-10 que el cliente dio cuando el
+// bot le pregunto "calificarias esta atencion" -- se usa en el turno de
+// "que podriamos mejorar" (que llega DESPUES, en un turno separado) para
+// saber si esa calificacion fue positiva o no. null si no se encuentra.
+function obtenerCalificacionOriginal(historial) {
+  for (let i = historial.length - 1; i >= 0; i--) {
+    const h = historial[i];
+    if (h.role === "bot" && normalizar(h.content).includes(MARCA_PEDIR_CALIFICACION)) {
+      const siguiente = historial[i + 1];
+      return siguiente && siguiente.role === "user" ? parseCalificacion(siguiente.content) : null;
+    }
+  }
+  return null;
+}
+
+// Acepta un digito 1-10 solo, o dentro de una frase corta ("le doy un 8", "9
+// de 10"). "10" se busca antes que los digitos sueltos para no matchear
+// solo el "1" de "10". No intenta interpretar palabras ("excelente", "mala")
+// para mantener el parseo simple y sin ambiguedad.
 function parseCalificacion(texto) {
-  const m = texto.match(/\b([1-5])\b/);
+  const m = texto.match(/\b(10|[1-9])\b/);
   return m ? Number(m[1]) : null;
 }
 
@@ -178,12 +210,20 @@ async function responder(cuenta, mensaje, recibo = null, linea = null, historial
       "Ya le compartí el contexto de tu consulta (tu recibo, el anterior, y la causa detectada) " +
       "para que no tengas que repetir todo.";
     registrar(cuenta, canal, telefono, hechosDesdeDiagnostico(diag), respuesta, mensaje);
+    // Saludo de entrada del agente "fake" -- se guarda como una interaccion
+    // aparte (sin mensaje del cliente ni hechos, es un mensaje automatico
+    // de la simulacion) para que quede visible en el hilo completo desde
+    // "Ver conversacion" en el panel interno, y el frontend lo muestra como
+    // una burbuja separada un instante despues de la tarjeta de derivacion.
+    const saludoAgente = `Hola, soy ${agente.nombre}, te voy a ayudar 😊`;
+    registrar(cuenta, canal, telefono, null, saludoAgente, null);
     return {
       respuesta,
       acciones: ["derivar_asesor"],
       contexto_asesor: contexto,
       satisfaccion: "insatisfecho",
       agente,
+      saludo_agente: saludoAgente,
     };
   }
 
@@ -257,24 +297,55 @@ async function responder(cuenta, mensaje, recibo = null, linea = null, historial
     return { respuesta, acciones: diagHist.encontrado ? ["hablar_con_asesor"] : [] };
   }
 
-  // Si el bot ACABA de pedir la calificacion 1-5 (mensaje fijo, ver mas
-  // abajo) y este turno trae un numero valido, la registramos y recien ahi
-  // cerramos de verdad con el Efecto Efervescente -- todo esto antes de
+  // Si el bot ACABA de pedir la observacion de mejora (solo pasa cuando la
+  // nota fue menor a 10), lo que sea que responda el cliente se toma como
+  // esa observacion -- y recien ahi cerramos con el Efecto Efervescente.
+  // Va ANTES que el chequeo de calificacion porque en este punto el ultimo
+  // mensaje del bot ya no es el de pedir la nota, sino el de pedir mejora.
+  if (botPidioMejora(historial)) {
+    await engine.registrarObservacionMejora(cuenta, canal, telefono, mensaje);
+    // Cross-selling restrictivo (pedido explicito de la ficha): el Efecto
+    // Efervescente solo se activa si la consulta se resolvio de forma
+    // POSITIVA (calificacion >= 7, no detractor). Si llegamos a este turno
+    // es porque la nota fue menor a 10 -- si ademas es un detractor (1-6),
+    // no le recordamos nada comercial en el cierre.
+    const puntajeOriginal = obtenerCalificacionOriginal(historial);
+    const puedeMostrarBeneficio = puntajeOriginal !== null && puntajeOriginal >= 7;
+    const [diag, beneficioRaw] = await Promise.all([
+      engine.diagnosticar(cuenta, recibo, linea),
+      puedeMostrarBeneficio ? engine.buscarBeneficioDestacado(cuenta, linea) : Promise.resolve(null),
+    ]);
+    const { texto: respuesta, hechos } = await llm.responderConversacion({ diag, historial, mensajeUsuario: mensaje, beneficio: beneficioRaw, cierreFinal: true });
+    registrar(cuenta, canal, telefono, hechos, respuesta, mensaje);
+    return { respuesta, acciones: [], satisfaccion: "conforme", beneficioMostrado: !!beneficioRaw };
+  }
+
+  // Si el bot ACABA de pedir la calificacion 1-10 (mensaje fijo, ver mas
+  // abajo) y este turno trae un numero valido, la registramos. Si la nota
+  // es menor a 10, pedimos una observacion de mejora antes de cerrar; si es
+  // 10, cerramos de una con el Efecto Efervescente. Todo esto antes de
   // cualquier otra logica de cierre para no pisarnos con PALABRAS_CIERRE.
   if (botPidioCalificacion(historial)) {
     const puntaje = parseCalificacion(texto);
     if (puntaje) {
-      await engine.registrarCalificacion(cuenta, canal, puntaje, mensaje);
-      engine.registrarSatisfaccion(cuenta, canal, "conforme", `calificacion ${puntaje}/5`).catch(() => {});
+      await engine.registrarCalificacion(cuenta, canal, puntaje, mensaje, telefono);
+      engine.registrarSatisfaccion(cuenta, canal, "conforme", `calificacion ${puntaje}/10`).catch(() => {});
+
+      if (puntaje < 10) {
+        const respuesta = MENSAJES_PEDIR_MEJORA[Math.floor(Math.random() * MENSAJES_PEDIR_MEJORA.length)];
+        registrar(cuenta, canal, telefono, null, respuesta, mensaje);
+        return { respuesta, acciones: [], satisfaccion: "conforme", calificacionRecibida: puntaje };
+      }
+
       const [diag, beneficioRaw] = await Promise.all([
         engine.diagnosticar(cuenta, recibo, linea),
         engine.buscarBeneficioDestacado(cuenta, linea),
       ]);
-      const { texto: respuesta, hechos } = await llm.responderConversacion({ diag, historial, mensajeUsuario: mensaje, beneficio: beneficioRaw });
+      const { texto: respuesta, hechos } = await llm.responderConversacion({ diag, historial, mensajeUsuario: mensaje, beneficio: beneficioRaw, cierreFinal: true });
       registrar(cuenta, canal, telefono, hechos, respuesta, mensaje);
       return { respuesta, acciones: [], satisfaccion: "conforme", beneficioMostrado: !!beneficioRaw, calificacionRecibida: puntaje };
     }
-    // Si no llego un numero 1-5 valido, no insistimos -- seguimos abajo y
+    // Si no llego un numero 1-10 valido, no insistimos -- seguimos abajo y
     // Claude responde con naturalidad a lo que sea que haya dicho.
   }
 
@@ -310,6 +381,15 @@ async function responder(cuenta, mensaje, recibo = null, linea = null, historial
     ? ["ver_recibos_anteriores", "registrar_consulta", "pagar", "hablar_con_asesor"]
     : [];
   if (diag.encontrado && diag.diferencia > 0.5) acciones.unshift("ver_detalle");
+  // Umbral de incomprension (pedido explicito de la ficha, "Precision del
+  // Hand-off"): si el motor no logro identificar una causa exacta para la
+  // variacion, no dejamos "hablar con un asesor" al final de la lista como
+  // una opcion mas -- la subimos primero, porque en este caso especifico
+  // el propio sistema sabe que no pudo resolverlo del todo.
+  if (diag.encontrado && diag.diferencia > 0.5 && diag.causas.length === 0) {
+    acciones.splice(acciones.indexOf("hablar_con_asesor"), 1);
+    acciones.unshift("hablar_con_asesor");
+  }
 
   return { respuesta, acciones, satisfaccion };
 }

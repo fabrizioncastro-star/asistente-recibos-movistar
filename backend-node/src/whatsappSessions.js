@@ -58,6 +58,20 @@ function pareceReinicio(texto) {
   return PALABRAS_REINICIAR.some((p) => t.includes(p));
 }
 
+// Un saludo simple ("Hola", "Buenas"...) sin nada mas se trata SIEMPRE
+// como el arranque de una conversacion nueva para efectos de presentarse
+// -- aunque el servidor todavia tenga en memoria el historial de una
+// charla anterior con este mismo numero (la sesion solo se limpia sola
+// tras varios minutos de inactividad), el cliente puede haber borrado su
+// chat o cambiado de equipo y no tiene forma de saber que ya hablamos
+// antes. Mejor presentarse de mas que sonar seco/raro con un "¿Que
+// necesitas?" a alguien que nos esta saludando por primera vez.
+const PATRON_SALUDO_SIMPLE = /^[\s¡¿]*(hola+|buenas|buenos dias|buenas tardes|buenas noches|hey|hi|que tal)[\s!.,¡¿?]*$/i;
+
+function esSaludoSimple(texto) {
+  return PATRON_SALUDO_SIMPLE.test(normalizar(texto));
+}
+
 function registrarTurno(session, mensajeUsuario, respuestaBot) {
   session.historial.push({ role: "user", content: mensajeUsuario });
   session.historial.push({ role: "bot", content: respuestaBot });
@@ -204,6 +218,7 @@ async function manejarMensaje(waId, textoUsuario) {
 
   let respuesta;
   let acciones = [];
+  let saludoAgente = null;
 
   if (session.estado === ESTADOS.SIN_IDENTIFICAR) {
     // Si el mensaje no parece un numero de cuenta, dejamos que Claude
@@ -213,7 +228,17 @@ async function manejarMensaje(waId, textoUsuario) {
       // Sin cuenta identificada todavia no hay nada real que ofrecer como
       // opcion (ni recibo, ni contexto para un asesor) -- la cinta de
       // opciones aparece recien despues de identificarse.
-      respuesta = await llm.responderOnboarding(texto);
+      if (esSaludoSimple(texto)) {
+        // Mensaje FIJO, no generado por Claude -- ver comentario junto a
+        // MENSAJES_SALUDO_SIMPLE en llm.js: presentarse ante un saludo
+        // simple es demasiado importante como para dejarlo a la variancia
+        // del modelo (probamos que a veces se presentaba y a veces no,
+        // con el MISMO historial vacio).
+        session.historial = [];
+        respuesta = llm.MENSAJES_SALUDO_SIMPLE[Math.floor(Math.random() * llm.MENSAJES_SALUDO_SIMPLE.length)];
+      } else {
+        respuesta = await llm.responderOnboarding(texto, session.historial);
+      }
       engine.registrarInteraccion(null, "whatsapp", null, respuesta, texto, waId).catch(() => {});
     } else {
       const r = await procesarIdentificacion(session, texto, waId);
@@ -228,12 +253,13 @@ async function manejarMensaje(waId, textoUsuario) {
     const resp = await assistant.responder(session.cuenta, texto, null, session.linea, session.historial, "whatsapp", waId);
     respuesta = resp.respuesta;
     acciones = resp.acciones || [];
+    saludoAgente = resp.saludo_agente || null;
     if (resp.satisfaccion) session.cerrado = true;
     if (resp.beneficioMostrado) session.beneficioMostrado = true;
   }
 
   registrarTurno(session, texto, respuesta);
-  return { respuesta, acciones };
+  return { respuesta, acciones, saludoAgente };
 }
 
 module.exports = { manejarMensaje, sesionesInactivas, marcarAvisoInactividadEnviado, reiniciarSesion, cerrarPorInactividad };

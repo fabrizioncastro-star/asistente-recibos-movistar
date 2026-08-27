@@ -10,6 +10,13 @@ const nlg = require("./nlg");
 const whatsapp = require("./whatsapp");
 const agentes = require("./agentes");
 
+// Red de seguridad global: si algun error async se escapa de un try/catch
+// en cualquier parte del codigo (webhook, monitor de inactividad, etc.),
+// lo dejamos registrado en vez de dejar que tumbe todo el proceso.
+process.on("unhandledRejection", (err) => {
+  console.error("Promesa rechazada sin atrapar:", err);
+});
+
 const app = express();
 
 // Guardamos el body crudo (rawBody) en cada request: lo necesita
@@ -41,22 +48,34 @@ app.use("/api/whatsapp/webhook", limiteChat);
 app.use("/api/whatsapp", whatsapp.router);
 whatsapp.iniciarMonitorInactividad();
 
+// Envoltorio para rutas async: sin esto, un error de DB (ej. ECONNRESET por
+// una conexion remota que se cerro sola) queda como una promesa rechazada
+// sin atrapar y TUMBA TODO EL SERVIDOR -- nos paso en local con
+// metricasCalificacion(). Con esto, el error queda contenido a esa sola
+// peticion (responde 500) y el resto de clientes conectados no se entera.
+function asyncHandler(fn) {
+  return (req, res, next) => Promise.resolve(fn(req, res, next)).catch((err) => {
+    console.error(`Error en ${req.method} ${req.path}:`, err.message);
+    if (!res.headersSent) res.status(500).json({ detail: "Error interno del servidor. Intenta de nuevo." });
+  });
+}
+
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 
-app.get("/api/casos-demo", async (req, res) => {
+app.get("/api/casos-demo", asyncHandler(async (req, res) => {
   const casos = await engine.buscarCasosDemo();
   res.json(casos);
-});
+}));
 
-app.get("/api/identificar/:cuenta", async (req, res) => {
+app.get("/api/identificar/:cuenta", asyncHandler(async (req, res) => {
   const lineas = await engine.buscarCuenta(req.params.cuenta);
   if (!lineas) {
     return res.status(404).json({ detail: "No encontramos esa cuenta. Verifica el número e intenta de nuevo." });
   }
   res.json({ cuenta: req.params.cuenta, lineas });
-});
+}));
 
-app.get("/api/recibo/:cuenta", async (req, res) => {
+app.get("/api/recibo/:cuenta", asyncHandler(async (req, res) => {
   const { numero, linea } = req.query;
   const diag = await engine.diagnosticar(req.params.cuenta, numero || null, linea || null);
   if (!diag.encontrado) {
@@ -74,23 +93,43 @@ app.get("/api/recibo/:cuenta", async (req, res) => {
     causas: diag.causas,
     explicacion: nlg.explicarVariacion(diag),
   });
-});
+}));
 
-app.post("/api/chat", async (req, res) => {
+app.post("/api/chat", asyncHandler(async (req, res) => {
   const { cuenta, mensaje, recibo, linea, historial } = req.body;
   const resp = await assistant.responder(cuenta, mensaje, recibo || null, linea || null, Array.isArray(historial) ? historial : [], "web");
   res.json(resp);
-});
+}));
 
 // Metricas de la "tasa de silencio post-explicacion" pedida por la ficha.
-app.get("/api/metricas/satisfaccion", async (req, res) => {
+app.get("/api/metricas/satisfaccion", asyncHandler(async (req, res) => {
   res.json(await engine.metricasSatisfaccion());
-});
+}));
 
-// Promedio y distribucion de la calificacion 1-5 que el bot pide al cerrar.
-app.get("/api/metricas/calificaciones", async (req, res) => {
+// Promedio, distribucion y desglose NPS (promotor/pasivo/detractor) de la
+// calificacion 1-10 que el bot pide al cerrar.
+app.get("/api/metricas/calificaciones", asyncHandler(async (req, res) => {
   res.json(await engine.metricasCalificacion());
-});
+}));
+
+// Desglose dia por dia de la calificacion (no solo el promedio general).
+app.get("/api/metricas/calificaciones/dias", asyncHandler(async (req, res) => {
+  res.json(await engine.calificacionesPorDia(req.query.dias));
+}));
+
+// Lista detallada: una fila por cliente que califico (cuenta, telefono,
+// canal, nota, observacion de mejora si dio menos de 10).
+app.get("/api/metricas/calificaciones/detalle", asyncHandler(async (req, res) => {
+  res.json(await engine.calificacionesDetalle(req.query.limit));
+}));
+
+// Todo satisfaccion_log en crudo (clasificacion por palabras clave +
+// calificacion numerica), para que el panel filtre por fecha en el
+// navegador y mantenga la tabla, el grafico y las estadisticas por
+// palabras clave sincronizados con el mismo filtro.
+app.get("/api/metricas/satisfaccion/detalle", asyncHandler(async (req, res) => {
+  res.json(await engine.satisfaccionDetalle(req.query.limit));
+}));
 
 // Roster de agentes "fake" para el panel interno (seccion Agentes).
 app.get("/api/agentes", (req, res) => {
@@ -99,35 +138,35 @@ app.get("/api/agentes", (req, res) => {
 
 // Derivaciones recientes a agentes, para que quede visible en el panel
 // interno que la derivacion realmente ocurrio (con quien y con que contexto).
-app.get("/api/derivaciones", async (req, res) => {
+app.get("/api/derivaciones", asyncHandler(async (req, res) => {
   res.json(await engine.derivacionesRecientes(req.query.limit));
-});
+}));
 
 // Porcentaje de respuestas de la IA sin alucinaciones financieras (todo
 // monto citado respaldado por los hechos que se le pasaron a Claude),
 // calculado sobre TODAS las interacciones registradas, no solo las recientes.
-app.get("/api/metricas/alucinaciones", async (req, res) => {
+app.get("/api/metricas/alucinaciones", asyncHandler(async (req, res) => {
   res.json(await engine.metricasAlucinaciones());
-});
+}));
 
 // Bloque de analitica para el panel: clientes atendidos por dia, problema
 // mas repetido, y cuantas veces se mostro el beneficio del Efecto
 // Efervescente. Se combina en un solo endpoint para que el dashboard haga
 // un solo fetch en vez de tres.
-app.get("/api/metricas/analitica", async (req, res) => {
+app.get("/api/metricas/analitica", asyncHandler(async (req, res) => {
   const [clientesPorDia, causasYBeneficio, derivacionesTotal] = await Promise.all([
     engine.clientesPorDia(14),
     engine.analiticaCausasYBeneficio(),
     engine.derivacionesTotal(),
   ]);
   res.json({ clientesPorDia, ...causasYBeneficio, derivacionesTotal });
-});
+}));
 
 // Log de auditoria interno (dashboard): hechos vs. respuesta de cada
 // interaccion con Claude, para demostrar 0% de alucinaciones financieras.
-app.get("/api/logs/interacciones", async (req, res) => {
+app.get("/api/logs/interacciones", asyncHandler(async (req, res) => {
   res.json(await engine.interaccionesRecientes(req.query.limit));
-});
+}));
 
 const FRONTEND_DIR = path.join(__dirname, "..", "public");
 app.use(express.static(FRONTEND_DIR));

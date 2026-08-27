@@ -6,18 +6,28 @@
 <title>Mi Movistar · Asistente de Recibos</title>
 <style>
   :root {
-    --azul: #0a2540;
-    --azul-claro: #0f3460;
-    --naranja: #ff6a00;
-    --gris-fondo: #eef1f5;
-    --gris-burbuja: #f0f2f5;
+    /* Misma paleta que el panel interno (dashboard.html) -- solo colores
+       solidos, sin degradados, y sin morado/rosado/naranja. */
+    --mov-navy: #0a1628;
+    --mov-navy-2: #142033;
+    --mov-blue: #019df4;
+    --mov-blue-dark: #0177c2;
+    --mov-cyan: #00aeef;
+    --mov-black: #1a1a1a;
+    --mov-gray: #6b7280;
+    --mov-gray-light: #f3f4f6;
+    --mov-border: #e5e7eb;
     --verde: #1fae5c;
+    --verde-bg: #d7f5e3;
+    --amarillo: #d97a00;
+    --amarillo-bg: #fdf1cf;
+    --chat-fondo: #eef2f6;
   }
   * { box-sizing: border-box; }
   body {
     margin: 0;
     font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-    background: var(--gris-fondo);
+    background: var(--chat-fondo);
     display: flex;
     justify-content: center;
     padding: 24px 12px;
@@ -28,7 +38,7 @@
     background: #fff;
     border-radius: 24px;
     overflow: hidden;
-    box-shadow: 0 10px 40px rgba(10,37,64,0.18);
+    box-shadow: 0 10px 40px rgba(10,22,40,0.18);
     display: flex;
     flex-direction: column;
     height: 90vh;
@@ -37,13 +47,13 @@
   }
 
   header {
-    background: linear-gradient(135deg, var(--azul), var(--azul-claro));
+    background: var(--mov-navy);
     color: white;
     padding: 16px 18px;
   }
   header .top-row { display: flex; justify-content: space-between; align-items: center; }
   header .brand { font-weight: 800; font-size: 18px; letter-spacing: .3px; }
-  header .brand span { color: var(--naranja); }
+  header .brand span { color: var(--mov-blue); }
   header .top-actions { display: flex; gap: 6px; }
   header .top-actions button {
     background: rgba(255,255,255,0.12); color: white; border: 1px solid rgba(255,255,255,0.3);
@@ -58,53 +68,65 @@
   .recibo-card .monto { font-size: 26px; font-weight: 800; }
   .recibo-card .sub { font-size: 12px; opacity: .85; margin-top: 2px; }
   .badge-diff { display: inline-block; margin-top: 6px; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; }
-  .badge-up { background: #ffe1cc; color: #b3450a; }
-  .badge-down { background: #d7f5e3; color: #0d7a3f; }
+  .badge-up { background: var(--amarillo-bg); color: var(--amarillo); }
+  .badge-down { background: var(--verde-bg); color: var(--verde); }
   .badge-flat { background: #e4e8ee; color: #445; }
 
-  .chat { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; background: var(--gris-fondo); }
+  /* ---------- Comparacion visual recibo anterior vs actual ---------- */
+  .comparacion-visual { margin-top: 12px; display: none; }
+  .comp-fila { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 11px; }
+  .comp-label { width: 50px; flex-shrink: 0; opacity: .85; }
+  .comp-pista { flex: 1; background: rgba(255,255,255,0.18); border-radius: 999px; height: 10px; overflow: hidden; }
+  .comp-relleno { height: 100%; border-radius: 999px; }
+  .comp-relleno.anterior { background: rgba(255,255,255,0.6); }
+  .comp-relleno.actual { background: var(--mov-cyan); }
+  .comp-valor { width: 64px; text-align: right; flex-shrink: 0; font-weight: 700; font-size: 11px; }
+  .comp-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .comp-chip { background: rgba(255,255,255,0.16); border-radius: 999px; padding: 3px 9px; font-size: 10.5px; }
+
+  .chat { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; background: var(--chat-fondo); }
   .msg { max-width: 82%; padding: 10px 14px; border-radius: 16px; font-size: 14px; line-height: 1.45; white-space: pre-wrap; }
-  .msg.bot { background: var(--gris-burbuja); color: #1b1f27; border-bottom-left-radius: 4px; align-self: flex-start; }
-  .msg.user { background: var(--azul); color: white; border-bottom-right-radius: 4px; align-self: flex-end; }
+  .msg.bot { background: var(--mov-gray-light); color: var(--mov-black); border-bottom-left-radius: 4px; align-self: flex-start; }
+  .msg.user { background: var(--mov-blue); color: white; border-bottom-right-radius: 4px; align-self: flex-end; }
   .msg b { font-weight: 700; }
   .quick-actions { display: flex; flex-wrap: wrap; gap: 6px; align-self: flex-start; max-width: 90%; }
   .quick-actions button {
-    background: white; border: 1px solid #d8dde5; color: var(--azul);
+    background: white; border: 1px solid var(--mov-border); color: var(--mov-blue-dark);
     border-radius: 999px; padding: 6px 12px; font-size: 12.5px; cursor: pointer;
   }
-  .quick-actions button:hover { background: #e9edf3; }
+  .quick-actions button:hover { background: var(--mov-gray-light); }
 
-  form.composer { display: flex; gap: 8px; padding: 12px; border-top: 1px solid #e4e8ee; background: white; }
-  form.composer input { flex: 1; border: 1px solid #d8dde5; border-radius: 999px; padding: 11px 16px; font-size: 14px; outline: none; }
-  form.composer input:focus { border-color: var(--azul); }
-  form.composer button { background: var(--naranja); color: white; border: none; width: 44px; height: 44px; border-radius: 50%; font-size: 16px; cursor: pointer; flex-shrink: 0; }
+  form.composer { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--mov-border); background: white; }
+  form.composer input { flex: 1; border: 1px solid var(--mov-border); border-radius: 999px; padding: 11px 16px; font-size: 14px; outline: none; }
+  form.composer input:focus { border-color: var(--mov-blue); }
+  form.composer button { background: var(--mov-blue); color: white; border: none; width: 44px; height: 44px; border-radius: 50%; font-size: 16px; cursor: pointer; flex-shrink: 0; }
   form.composer button:disabled { opacity: .5; cursor: default; }
 
-  .typing { align-self: flex-start; color: #8a93a3; font-size: 12.5px; padding-left: 4px; }
+  .typing { align-self: flex-start; color: var(--mov-gray); font-size: 12.5px; padding-left: 4px; }
 
   /* ---------- Tarjeta de derivacion a agente ---------- */
   .agente-card-msg {
-    align-self: flex-start; max-width: 88%; background: white; border: 1px solid #d8dde5;
+    align-self: flex-start; max-width: 88%; background: white; border: 1px solid var(--mov-border);
     border-radius: 16px; padding: 12px 14px; display: flex; gap: 12px; align-items: center;
-    box-shadow: 0 2px 8px rgba(10,37,64,0.08);
+    box-shadow: 0 2px 8px rgba(10,22,40,0.08);
   }
-  .agente-card-msg .avatar-agente { font-size: 32px; width: 48px; height: 48px; border-radius: 50%; background: var(--gris-fondo); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-  .agente-card-msg .nombre-agente { font-weight: 700; font-size: 14px; color: var(--azul); }
-  .agente-card-msg .area-agente { font-size: 12px; color: #778; margin-top: 1px; }
+  .agente-card-msg .avatar-agente { font-size: 32px; width: 48px; height: 48px; border-radius: 50%; background: var(--mov-gray-light); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .agente-card-msg .nombre-agente { font-weight: 700; font-size: 14px; color: var(--mov-navy); }
+  .agente-card-msg .area-agente { font-size: 12px; color: var(--mov-gray); margin-top: 1px; }
   .agente-card-msg .estado-agente { font-size: 11px; color: var(--verde); font-weight: 700; margin-top: 4px; display: flex; align-items: center; gap: 5px; }
   .agente-card-msg .estado-agente .punto { width: 7px; height: 7px; border-radius: 50%; background: var(--verde); display: inline-block; animation: pulso 1.4s infinite; }
   @keyframes pulso { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
 
   /* ---------- Panel de demo ---------- */
-  .demo-panel { position: absolute; inset: 0; background: rgba(10,37,64,0.55); display: none; align-items: flex-end; z-index: 10; }
+  .demo-panel { position: absolute; inset: 0; background: rgba(10,22,40,0.55); display: none; align-items: flex-end; z-index: 10; }
   .demo-panel.abierto { display: flex; }
   .demo-sheet { background: white; width: 100%; border-radius: 20px 20px 0 0; padding: 18px; max-height: 75%; overflow-y: auto; }
-  .demo-sheet h3 { margin: 0 0 4px; font-size: 15px; color: var(--azul); }
-  .demo-sheet p { margin: 0 0 14px; font-size: 12px; color: #667; }
-  .demo-lista button { display: block; width: 100%; text-align: left; background: var(--gris-burbuja); border: none; border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; font-size: 13px; cursor: pointer; color: #1b1f27; }
+  .demo-sheet h3 { margin: 0 0 4px; font-size: 15px; color: var(--mov-navy); }
+  .demo-sheet p { margin: 0 0 14px; font-size: 12px; color: var(--mov-gray); }
+  .demo-lista button { display: block; width: 100%; text-align: left; background: var(--mov-gray-light); border: none; border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; font-size: 13px; cursor: pointer; color: var(--mov-black); }
   .demo-lista button:hover { background: #e4e8ee; }
-  .demo-lista .tag { font-size: 10.5px; color: var(--naranja); font-weight: 700; text-transform: uppercase; }
-  .cerrar-demo { display: block; margin: 4px auto 0; background: none; border: none; color: #667; font-size: 12px; cursor: pointer; text-decoration: underline; }
+  .demo-lista .tag { font-size: 10.5px; color: var(--mov-blue-dark); font-weight: 700; text-transform: uppercase; }
+  .cerrar-demo { display: block; margin: 4px auto 0; background: none; border: none; color: var(--mov-gray); font-size: 12px; cursor: pointer; text-decoration: underline; }
 </style>
 </head>
 <body>
@@ -125,6 +147,19 @@
       <div class="monto" id="montoActual">S/ 0.00</div>
       <div class="sub" id="reciboSub">Recibo actual</div>
       <div class="badge-diff" id="badgeDiff"></div>
+      <div class="comparacion-visual" id="comparacionVisual">
+        <div class="comp-fila">
+          <span class="comp-label">Anterior</span>
+          <div class="comp-pista"><div class="comp-relleno anterior" id="compBarraAnterior"></div></div>
+          <span class="comp-valor" id="compValorAnterior">S/ 0.00</span>
+        </div>
+        <div class="comp-fila">
+          <span class="comp-label">Actual</span>
+          <div class="comp-pista"><div class="comp-relleno actual" id="compBarraActual"></div></div>
+          <span class="comp-valor" id="compValorActual">S/ 0.00</span>
+        </div>
+        <div class="comp-chips" id="compChips"></div>
+      </div>
     </div>
   </header>
 
@@ -186,6 +221,18 @@ const ICONOS_SERVICIO = {
   "Línea Móvil": "📱", "Internet Hogar": "🌐", "Equipo/Router de Internet": "📡",
   "TV": "📺", "Línea Fija (Voz)": "☎️",
 };
+// Mismos tipos de causa que devuelve engine.js, en version corta para las
+// "chips" de la comparacion visual (explicacion visual, no solo texto --
+// pedido explicito de la ficha del desafio).
+const ETIQUETAS_CAUSA_VISUAL = {
+  prorrateo: { emoji: "🧾", texto: "Prorrateo" },
+  reconexion: { emoji: "🔌", texto: "Reconexión" },
+  fin_descuento: { emoji: "🏷️", texto: "Fin de descuento" },
+  financiamiento: { emoji: "📱", texto: "Cuota de equipo" },
+  cambio_plan: { emoji: "🔄", texto: "Cambio de plan" },
+  nota_credito: { emoji: "💳", texto: "Nota crédito/débito" },
+  otro: { emoji: "❓", texto: "Otro cargo" },
+};
 
 // Nombres ficticios solo para que la demo se sienta como un cliente real
 // (los datos originales estan anonimizados: sin nombre, sin DNI, sin telefono)
@@ -245,6 +292,50 @@ function addAgentCard(agente) {
   `;
   chatEl.appendChild(div);
   chatEl.scrollTop = chatEl.scrollHeight;
+  return div;
+}
+
+// Un instante despues de la tarjeta de derivacion, simula que el agente
+// "fake" se une al chat: pasa la tarjeta a "Disponible" y manda su saludo
+// de entrada como una burbuja aparte (el texto exacto lo decide el
+// backend -- data.saludo_agente -- para que quede igual en el log de
+// interacciones que ve el panel interno).
+function simularSaludoAgente(agente, saludo, cardEl) {
+  setTimeout(() => {
+    mostrarTyping();
+    setTimeout(() => {
+      quitarTyping();
+      if (cardEl) {
+        const estadoEl = cardEl.querySelector(".estado-agente");
+        if (estadoEl) estadoEl.innerHTML = '<span class="punto"></span> Disponible';
+      }
+      addMsg(`${agente.avatar} ${saludo}`, "bot");
+    }, 900);
+  }, 700);
+}
+
+// Muestra la respuesta del bot en varios mensajitos seguidos en vez de un
+// solo bloque de texto -- se ve mas como una persona texteando (los
+// prompts del backend separan las ideas con una linea en blanco a
+// proposito para esto), igual que se hace por WhatsApp. Tope de 3
+// mensajes: si el texto trae mas parrafos, los ultimos se juntan en el
+// ultimo para no saturar el chat de burbujas.
+const MAX_PARTES_WEB = 3;
+async function mostrarRespuestaBot(texto) {
+  let partes = texto.split(/\n\s*\n+/).map((p) => p.trim()).filter(Boolean);
+  if (partes.length > MAX_PARTES_WEB) {
+    partes = [...partes.slice(0, MAX_PARTES_WEB - 1), partes.slice(MAX_PARTES_WEB - 1).join("\n\n")];
+  }
+  if (!partes.length) partes = [texto];
+  for (let i = 0; i < partes.length; i++) {
+    if (i > 0) {
+      await new Promise((r) => setTimeout(r, 450));
+      mostrarTyping();
+      await new Promise((r) => setTimeout(r, 500));
+      quitarTyping();
+    }
+    addMsg(partes[i], "bot");
+  }
 }
 
 function addQuickActions(acciones) {
@@ -303,8 +394,11 @@ async function enviarMensaje(texto, silencioso) {
     });
     const data = await res.json();
     quitarTyping();
-    addMsg(data.respuesta, "bot");
-    if (data.agente) addAgentCard(data.agente);
+    await mostrarRespuestaBot(data.respuesta);
+    if (data.agente) {
+      const cardEl = addAgentCard(data.agente);
+      if (data.saludo_agente) simularSaludoAgente(data.agente, data.saludo_agente, cardEl);
+    }
     addQuickActions(data.acciones);
     historialConversacion.push({ role: "user", content: texto }, { role: "bot", content: data.respuesta });
   } catch (e) {
@@ -399,9 +493,36 @@ async function cargarReciboCard() {
     const diff = diag.diferencia;
     badgeDiffEl.className = "badge-diff " + (diff > 0.5 ? "badge-up" : diff < -0.5 ? "badge-down" : "badge-flat");
     badgeDiffEl.textContent = diff > 0.5 ? `↑ S/ ${diff.toFixed(2)} más` : diff < -0.5 ? `↓ S/ ${Math.abs(diff).toFixed(2)} menos` : "Sin variación";
+    pintarComparacionVisual(diag);
   } catch (e) {
     reciboCard.style.display = "none";
   }
+}
+
+// Comparacion visual (barras) del recibo anterior vs el actual, mas chips
+// de las causas detectadas -- para que la explicacion no sea solo texto.
+// Si es el primer recibo del cliente (no hay uno previo con que comparar),
+// simplemente no se muestra: no hay nada que graficar todavia.
+function pintarComparacionVisual(diag) {
+  const wrap = document.getElementById("comparacionVisual");
+  const previo = diag.total_previo || 0;
+  const actual = diag.total_actual || 0;
+  if (!previo) { wrap.style.display = "none"; return; }
+  wrap.style.display = "block";
+
+  const max = Math.max(previo, actual, 1);
+  document.getElementById("compBarraAnterior").style.width = `${Math.max(4, (previo / max) * 100)}%`;
+  document.getElementById("compBarraActual").style.width = `${Math.max(4, (actual / max) * 100)}%`;
+  document.getElementById("compValorAnterior").textContent = `S/ ${previo.toFixed(2)}`;
+  document.getElementById("compValorActual").textContent = `S/ ${actual.toFixed(2)}`;
+
+  const chipsEl = document.getElementById("compChips");
+  const causas = diag.causas || [];
+  chipsEl.innerHTML = causas.map((c) => {
+    const meta = ETIQUETAS_CAUSA_VISUAL[c.tipo] || { emoji: "🔎", texto: c.tipo };
+    const monto = typeof c.monto === "number" && Math.abs(c.monto) >= 0.01 ? ` · S/ ${Math.abs(c.monto).toFixed(2)}` : "";
+    return `<span class="comp-chip">${meta.emoji} ${meta.texto}${monto}</span>`;
+  }).join("");
 }
 
 // ---------- Reiniciar sesion (boton "salir" o al cambiar de cuenta demo) ----------

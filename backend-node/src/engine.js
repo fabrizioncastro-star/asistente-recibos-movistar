@@ -28,16 +28,37 @@ async function cargarCatalogo() {
 }
 
 async function buscarCuenta(cuenta) {
+  const cuentaLimpia = String(cuenta).trim();
   const [rows] = await pool.query(
     "SELECT num_anexo, lob_type, negocio FROM planta_clientes WHERE financial_account = ?",
-    [String(cuenta).trim()]
+    [cuentaLimpia]
   );
-  if (!rows.length) return null;
-  return rows.map((r) => ({
-    anexo: r.num_anexo,
-    tipo: r.lob_type,
-    etiqueta: LOB_LABELS[r.lob_type] || r.lob_type,
-    negocio: r.negocio,
+  if (rows.length) {
+    return rows.map((r) => ({
+      anexo: r.num_anexo,
+      tipo: r.lob_type,
+      etiqueta: LOB_LABELS[r.lob_type] || r.lob_type,
+      negocio: r.negocio,
+    }));
+  }
+
+  // No esta en planta_clientes (el listado de clientes ACTUALES) -- puede
+  // ser una cuenta que ya no es cliente activo pero que si tiene historial
+  // real de facturacion (ej. se dio de baja). En vez de decir "no
+  // encontrada" de una, buscamos directo en facturacion: si tiene recibos,
+  // igual la identificamos -- solo que sin el tipo de servicio (Movil,
+  // Internet, etc.) porque esa info especificamente vive en planta_clientes
+  // y no la tenemos para estos casos.
+  const [lineasFacturacion] = await pool.query(
+    "SELECT DISTINCT subscriber_key FROM facturacion WHERE financial_account_key = ? AND subscriber_key IS NOT NULL",
+    [cuentaLimpia]
+  );
+  if (!lineasFacturacion.length) return null;
+  return lineasFacturacion.map((r, i) => ({
+    anexo: r.subscriber_key,
+    tipo: null,
+    etiqueta: lineasFacturacion.length > 1 ? `Servicio ${i + 1}` : "Servicio",
+    negocio: null,
   }));
 }
 
@@ -431,36 +452,50 @@ async function registrarConsulta(cuenta, canal, resumen) {
 // alguien solo escribia el numero de cuenta sin el recibo especifico, veia
 // "sin variacion" porque el bot explica el recibo de HOY, no uno viejo.
 // Con estos casos, escribir solo el numero de cuenta ya alcanza.
+// Cada cuenta fue verificada dos veces: (1) la causa aparece en el recibo
+// MAS RECIENTE de la cuenta (no uno viejo), y (2) la cuenta existe tanto en
+// `facturacion` como en `planta_clientes` (si falta en planta_clientes, la
+// identificacion falla aunque el diagnostico funcione).
+//
+// La ficha pide poder demostrar cada escenario "en ambas modalidades de
+// renta adelantada y vencida" -- por eso, donde el dataset lo permitia, se
+// incluye al menos una cuenta de cada modalidad (columna `tipo_renta` en
+// `catalogo_ofertas`, unida por charge_code). EXCEPCION CONOCIDA: prorrateo
+// solo existe en modalidad ADELANTADA en todo el dataset sintetico -- se
+// audito exhaustivamente (join brainy_prorrateo -> facturacion ->
+// catalogo_ofertas filtrando tipo_renta = 'VENCIDA') y dio cero resultados
+// en TODA la base, no es una cuenta que falte por buscar. Es una limitacion
+// real de los datos de prueba entregados, no del motor de reglas.
 const CASOS_DEMO_VERIFICADOS = {
   prorrateo: [
-    { cuenta: "761826072", recibo: "S9AA-0082929210" },
-    { cuenta: "761761362", recibo: "S1AA-0052899594" },
-    { cuenta: "761776277", recibo: "S1AA-0052947287" },
+    { cuenta: "761826072", recibo: "S9AA-0082929210" }, // ADELANTADA
+    { cuenta: "761761362", recibo: "S1AA-0052899594" }, // ADELANTADA
+    { cuenta: "761776277", recibo: "S1AA-0052947287" }, // ADELANTADA -- no hay ninguna cuenta VENCIDA con prorrateo en el dataset (ver nota arriba)
   ],
   reconexion: [
-    { cuenta: "103976720", recibo: "S9AA-0082590016" },
-    { cuenta: "104125317", recibo: "S3AA-0080033306" },
-    { cuenta: "104024667", recibo: "S5AA-0081683506" },
+    { cuenta: "103976720", recibo: "S9AA-0082590016" }, // VENCIDA
+    { cuenta: "104125317", recibo: "S3AA-0080033306" }, // VENCIDA
+    { cuenta: "747037881", recibo: "S1AA-0052372745" }, // ADELANTADA
   ],
   fin_descuento: [
-    { cuenta: "759739074", recibo: "S8AA-0008372021" },
-    { cuenta: "741244173", recibo: "S8AA-0008274774" },
-    { cuenta: "757749108", recibo: "S8AA-0008377841" },
+    { cuenta: "759739074", recibo: "S8AA-0008372021" }, // ADELANTADA
+    { cuenta: "741244173", recibo: "S8AA-0008274774" }, // VENCIDA
+    { cuenta: "757749108", recibo: "S8AA-0008377841" }, // VENCIDA
   ],
   financiamiento: [
-    { cuenta: "753362001", recibo: "S1AA-0052482465" },
-    { cuenta: "101130168", recibo: "S1AA-0052791162" },
-    { cuenta: "754497535", recibo: "S1AA-0052822881" },
+    { cuenta: "753362001", recibo: "S1AA-0052482465" }, // ADELANTADA
+    { cuenta: "101130168", recibo: "S1AA-0052791162" }, // VENCIDA
+    { cuenta: "754497535", recibo: "S1AA-0052822881" }, // VENCIDA
   ],
   cambio_plan: [
-    { cuenta: "727719775", recibo: "S1AA-0052433081" },
-    { cuenta: "700880965", recibo: "S1AA-0052432494" },
-    { cuenta: "702746048", recibo: "S1AA-0052418844" },
+    { cuenta: "727719775", recibo: "S1AA-0052433081" }, // VENCIDA
+    { cuenta: "700880965", recibo: "S1AA-0052432494" }, // VENCIDA
+    { cuenta: "374734026", recibo: "S1AA-0052357116" }, // ADELANTADA
   ],
   nota_credito: [
-    { cuenta: "102233951", recibo: "S3AA-0080126586" },
-    { cuenta: "103692188", recibo: "S1AA-0052607549" },
-    { cuenta: "308791919", recibo: "S5AA-0082207824" },
+    { cuenta: "102233951", recibo: "S3AA-0080126586" }, // ADELANTADA
+    { cuenta: "103692188", recibo: "S1AA-0052607549" }, // ADELANTADA
+    { cuenta: "308791919", recibo: "S5AA-0082207824" }, // VENCIDA
   ],
   multiservicio: [
     { cuenta: "300004563" },
@@ -512,15 +547,35 @@ async function metricasSatisfaccion() {
   return { total, por_clasificacion: porClasificacion };
 }
 
-// Calificacion explicita 1-5 que el bot pide al cliente justo cuando cierra
+// Calificacion explicita 1-10 que el bot pide al cliente justo cuando cierra
 // la conversacion (despues de "algo mas?" -> "no"). Vive en la misma tabla
 // que la satisfaccion inferida por palabras clave, como una columna aparte
-// (puntaje), para tener ambas senales sin duplicar tablas.
-async function registrarCalificacion(cuenta, canal, puntaje, detalle = null) {
-  await pool.query(
-    "INSERT INTO satisfaccion_log (cuenta, canal, clasificacion, puntaje, detalle) VALUES (?, ?, 'calificado', ?, ?)",
-    [cuenta || null, canal, puntaje, detalle ? String(detalle).slice(0, 250) : null]
+// (puntaje), para tener ambas senales sin duplicar tablas. Escala 1-10 (no
+// 1-5) a proposito: asi se alinea con la metodologia NPS real que la ficha
+// menciona (NPS Transaccional FARECO) -- promotor 9-10, pasivo 7-8,
+// detractor 1-6.
+async function registrarCalificacion(cuenta, canal, puntaje, detalle = null, telefono = null) {
+  const [result] = await pool.query(
+    "INSERT INTO satisfaccion_log (cuenta, canal, telefono, clasificacion, puntaje, detalle) VALUES (?, ?, ?, 'calificado', ?, ?)",
+    [cuenta || null, canal, telefono || null, puntaje, detalle ? String(detalle).slice(0, 250) : null]
   );
+  return result.insertId;
+}
+
+// Cuando el cliente califica menos de 10, el bot pide una observacion de
+// mejora -- se guarda como una fila aparte (mismo mecanismo que el resto de
+// clasificaciones), para no tener que rastrear estado entre turnos.
+async function registrarObservacionMejora(cuenta, canal, telefono, texto) {
+  await pool.query(
+    "INSERT INTO satisfaccion_log (cuenta, canal, telefono, clasificacion, detalle) VALUES (?, ?, ?, 'observacion_mejora', ?)",
+    [cuenta || null, canal, telefono || null, String(texto).slice(0, 500)]
+  );
+}
+
+function claseNps(puntaje) {
+  if (puntaje >= 9) return "promotor";
+  if (puntaje >= 7) return "pasivo";
+  return "detractor";
 }
 
 async function metricasCalificacion() {
@@ -530,9 +585,90 @@ async function metricasCalificacion() {
   const [distribucionRaw] = await pool.query(
     "SELECT puntaje, COUNT(*) AS total FROM satisfaccion_log WHERE puntaje IS NOT NULL GROUP BY puntaje"
   );
-  const distribucion = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-  for (const r of distribucionRaw) distribucion[r.puntaje] = r.total;
-  return { total, promedio: promedio ? Number(promedio) : null, distribucion };
+  const distribucion = {};
+  for (let i = 1; i <= 10; i++) distribucion[i] = 0;
+  let promotores = 0, pasivos = 0, detractores = 0;
+  for (const r of distribucionRaw) {
+    distribucion[r.puntaje] = r.total;
+    if (claseNps(r.puntaje) === "promotor") promotores += r.total;
+    else if (claseNps(r.puntaje) === "pasivo") pasivos += r.total;
+    else detractores += r.total;
+  }
+  const nps = total ? Math.round(((promotores - detractores) / total) * 100) : null;
+  return { total, promedio: promedio ? Number(promedio) : null, distribucion, nps, promotores, pasivos, detractores };
+}
+
+// Desglose dia por dia (para el grafico de "satisfaccion por dia" que pide
+// el panel), en vez de solo un promedio general.
+async function calificacionesPorDia(dias = 30) {
+  // creado_en se guarda en UTC (el servidor de MySQL corre en UTC) -- lo
+  // convertimos a hora de Lima (UTC-5, fijo, Peru no tiene horario de
+  // verano) ANTES de agrupar por dia, para que "el dia" coincida con el
+  // dia real del cliente y no se corte a mitad de la noche.
+  const [rows] = await pool.query(
+    `SELECT DATE(CONVERT_TZ(creado_en, '+00:00', '-05:00')) AS dia, COUNT(*) AS total, AVG(puntaje) AS promedio
+     FROM satisfaccion_log
+     WHERE puntaje IS NOT NULL AND creado_en >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+     GROUP BY DATE(CONVERT_TZ(creado_en, '+00:00', '-05:00')) ORDER BY dia`,
+    [dias]
+  );
+  return rows.map((r) => ({ dia: String(r.dia).slice(0, 10), total: r.total, promedio: Number(r.promedio) }));
+}
+
+// Lista detallada: una fila por cliente que calificó, con su nota exacta y
+// (si aplica) la observacion de mejora que dio despues -- para que el panel
+// pueda mostrar quien dio que nota, no solo el promedio.
+async function calificacionesDetalle(limit = 100) {
+  const n = Math.min(Math.max(Number(limit) || 100, 1), 500);
+  const [filas] = await pool.query(
+    `SELECT id, cuenta, telefono, canal, clasificacion, puntaje, detalle, creado_en
+     FROM satisfaccion_log
+     WHERE puntaje IS NOT NULL OR clasificacion = 'observacion_mejora'
+     ORDER BY creado_en DESC LIMIT ${n}`
+  );
+  const calificaciones = filas.filter((f) => f.puntaje !== null);
+  const observaciones = filas.filter((f) => f.clasificacion === "observacion_mejora");
+  return calificaciones.map((c) => {
+    const obs = observaciones.find((o) =>
+      o.cuenta === c.cuenta && o.canal === c.canal &&
+      new Date(o.creado_en) >= new Date(c.creado_en) &&
+      new Date(o.creado_en) - new Date(c.creado_en) < 5 * 60 * 1000
+    );
+    return {
+      id: c.id,
+      cuenta: c.cuenta,
+      telefono: c.telefono,
+      canal: c.canal,
+      puntaje: c.puntaje,
+      nps: claseNps(c.puntaje),
+      observacion: obs ? obs.detalle : null,
+      creado_en: c.creado_en ? String(c.creado_en).replace(" ", "T") + "Z" : null,
+    };
+  });
+}
+
+// Todas las filas de satisfaccion_log tal cual (clasificacion por palabras
+// clave Y calificacion numerica juntas), para que el panel pueda filtrar
+// por fecha/rango en el navegador y recalcular ahi tanto la tabla de
+// calificaciones como las estadisticas por palabras clave con el MISMO
+// criterio de fecha, sin tener que pedir dos veces al servidor.
+async function satisfaccionDetalle(limit = 300) {
+  const n = Math.min(Math.max(Number(limit) || 300, 1), 1000);
+  const [rows] = await pool.query(
+    `SELECT id, cuenta, telefono, canal, clasificacion, puntaje, detalle, creado_en
+     FROM satisfaccion_log ORDER BY creado_en DESC LIMIT ${n}`
+  );
+  return rows.map((r) => ({
+    id: r.id,
+    cuenta: r.cuenta,
+    telefono: r.telefono,
+    canal: r.canal,
+    clasificacion: r.clasificacion,
+    puntaje: r.puntaje,
+    nps: r.puntaje !== null ? claseNps(r.puntaje) : null,
+    detalle: r.detalle,
+    creado_en: r.creado_en ? String(r.creado_en).replace(" ", "T") + "Z" : null,
+  }));
 }
 
 // Registro de cada derivacion a un agente "fake" -- lo que hace visible en
@@ -687,5 +823,6 @@ module.exports = {
   historialRecibos, resolverReferenciaPorMes, resolverReferenciaPorPosicion,
   detalleRecibo, registrarConsulta, registrarInteraccion, interaccionesRecientes,
   registrarCalificacion, metricasCalificacion, registrarDerivacion, derivacionesRecientes,
+  registrarObservacionMejora, calificacionesPorDia, calificacionesDetalle, satisfaccionDetalle,
   metricasAlucinaciones, clientesPorDia, analiticaCausasYBeneficio, derivacionesTotal,
 };

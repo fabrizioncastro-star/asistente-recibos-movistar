@@ -4,6 +4,7 @@
 -- se ejecuta aparte, una sola vez, con migrate/run_dashboard_features.js.
 
 ALTER TABLE satisfaccion_log ADD COLUMN IF NOT EXISTS puntaje TINYINT NULL AFTER clasificacion;
+ALTER TABLE satisfaccion_log ADD COLUMN IF NOT EXISTS telefono VARCHAR(20) NULL AFTER canal;
 
 CREATE TABLE IF NOT EXISTS derivaciones_asesor (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,

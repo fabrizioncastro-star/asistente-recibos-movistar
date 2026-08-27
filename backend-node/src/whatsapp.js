@@ -72,6 +72,29 @@ function construirPayloadMensaje(to, texto, acciones = []) {
   };
 }
 
+// Manda la respuesta en varios mensajitos seguidos en vez de un solo bloque
+// de texto -- se ve mas como una persona texteando (los prompts de llm.js
+// separan las ideas con una linea en blanco a proposito para esto) y es
+// mas facil de leer en el celular. Tope de 3 mensajes: si Claude se
+// explaya de mas, los ultimos parrafos se juntan en el ultimo envio para
+// no saturar el chat de burbujas.
+const MAX_PARTES_WHATSAPP = 3;
+const PAUSA_ENTRE_PARTES_MS = 700;
+
+async function enviarRespuestaWhatsapp(to, texto, acciones = []) {
+  let partes = texto.split(/\n\s*\n+/).map((p) => p.trim()).filter(Boolean);
+  if (partes.length > MAX_PARTES_WHATSAPP) {
+    partes = [...partes.slice(0, MAX_PARTES_WHATSAPP - 1), partes.slice(MAX_PARTES_WHATSAPP - 1).join("\n\n")];
+  }
+  if (!partes.length) partes = [texto];
+
+  for (let i = 0; i < partes.length; i++) {
+    const esUltima = i === partes.length - 1;
+    await enviarMensajeWhatsapp(to, partes[i], esUltima ? acciones : []);
+    if (!esUltima) await new Promise((r) => setTimeout(r, PAUSA_ENTRE_PARTES_MS));
+  }
+}
+
 async function enviarMensajeWhatsapp(to, texto, acciones = []) {
   const url = `https://graph.facebook.com/${GRAPH_VERSION}/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`;
   const res = await fetch(url, {
@@ -131,8 +154,18 @@ router.post("/webhook", (req, res) => {
       }
       if (!texto) return; // por ahora no manejamos audio/imagenes/etc.
 
-      const { respuesta, acciones } = await whatsappSessions.manejarMensaje(waId, texto);
-      await enviarMensajeWhatsapp(waId, respuesta, acciones);
+      const { respuesta, acciones, saludoAgente } = await whatsappSessions.manejarMensaje(waId, texto);
+      await enviarRespuestaWhatsapp(waId, respuesta, acciones);
+      // El "agente" manda su saludo un instante despues, como si recien se
+      // hubiera unido al chat -- mismo texto que ya quedo registrado en
+      // interacciones_log, asi el panel interno y el cliente ven lo mismo.
+      if (saludoAgente) {
+        setTimeout(() => {
+          enviarMensajeWhatsapp(waId, saludoAgente).catch((e) =>
+            console.error(`Error enviando saludo de agente a ${waId}:`, e)
+          );
+        }, 1800);
+      }
     } catch (e) {
       console.error("Error procesando mensaje entrante de WhatsApp:", e);
     }
